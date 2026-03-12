@@ -14,6 +14,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuth();
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
+  const [loginMethod, setLoginMethod] = useState<"password" | "otp">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -60,12 +61,38 @@ export default function LoginPage() {
     }
   };
 
-  const handleLogin = async () => {
+  const resetFlow = (method: "password" | "otp") => {
+    setLoginMethod(method);
+    setStep("credentials");
+    setError(null);
+    setStatus(null);
+    setOtp("");
+    if (method === "otp") {
+      setPassword("");
+    }
+  };
+
+  const handlePasswordLogin = async () => {
     setError(null);
     setStatus(null);
     setLoading(true);
     try {
-      const response = await loginUser({ email, password, otp });
+      const response = await loginUser({ email, password });
+      setAuth(response);
+      router.push("/");
+    } catch (err) {
+      setError(getErrorMessage(err, "Login failed."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpLogin = async () => {
+    setError(null);
+    setStatus(null);
+    setLoading(true);
+    try {
+      const response = await loginUser({ email, otp });
       setAuth(response);
       router.push("/");
     } catch (err) {
@@ -87,6 +114,31 @@ export default function LoginPage() {
               </p>
             </div>
             <div className="mt-8 space-y-6">
+              <div className="flex gap-2 rounded-lg bg-gray-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => resetFlow("password")}
+                  className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    loginMethod === "password"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Use password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => resetFlow("otp")}
+                  className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    loginMethod === "otp"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Use code
+                </button>
+              </div>
+
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-gray-700">
                   Email
@@ -102,30 +154,32 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    className="flex h-11 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4C1C59] focus-visible:ring-offset-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+              {loginMethod === "password" && (
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      className="flex h-11 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4C1C59] focus-visible:ring-offset-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {step === "otp" && (
                 <div className="space-y-2">
@@ -152,16 +206,24 @@ export default function LoginPage() {
                 <button
                   type="button"
                   className="w-full h-11 rounded-md bg-[#4C1C59] text-white font-medium transition-colors hover:bg-[#361340] disabled:opacity-60 disabled:cursor-not-allowed"
-                  onClick={handleSendOtp}
-                  disabled={loading || !email || !password}
+                  onClick={loginMethod === "password" ? handlePasswordLogin : handleSendOtp}
+                  disabled={
+                    loading || !email || (loginMethod === "password" && !password)
+                  }
                 >
-                  {loading ? "Sending OTP..." : "Continue"}
+                  {loading
+                    ? loginMethod === "password"
+                      ? "Logging in..."
+                      : "Sending OTP..."
+                    : loginMethod === "password"
+                    ? "Log In"
+                    : "Continue"}
                 </button>
               ) : (
                 <button
                   type="button"
                   className="w-full h-11 rounded-md bg-[#4C1C59] text-white font-medium transition-colors hover:bg-[#361340] disabled:opacity-60 disabled:cursor-not-allowed"
-                  onClick={handleLogin}
+                  onClick={handleOtpLogin}
                   disabled={loading || otp.length !== 6}
                 >
                   {loading ? "Logging in..." : "Log In"}

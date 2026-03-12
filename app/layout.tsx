@@ -33,7 +33,7 @@ export default function RootLayout({
         <Providers>
           <AnimatedBackground>
             <Navbar />
-            {children}
+            <div className="pt-[140px]">{children}</div>
           </AnimatedBackground>
         </Providers>
       </body>

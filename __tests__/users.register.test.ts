@@ -210,7 +210,6 @@ describe("loginUser", () => {
     await loginUser({
       email: "user@example.com",
       password: "securepassword123",
-      otp: "123456",
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -237,7 +236,6 @@ describe("loginUser", () => {
     await expect(
       loginUser({
         email: "user@example.com",
-        password: "wrong-password",
         otp: "123456",
       })
     ).rejects.toThrow("API request failed: 400");

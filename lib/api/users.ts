@@ -53,12 +53,18 @@ export type SendOtpResponse = {
   message: string;
 };
 
-// Login payload for /api/users/login/
-export type LoginUserPayload = {
-  email: string;
-  password: string;
-  otp: string;
-};
+// Login payload for /api/users/login/ (either password or OTP, not both)
+export type LoginUserPayload =
+  | {
+      email: string;
+      password: string;
+      otp?: never;
+    }
+  | {
+      email: string;
+      otp: string;
+      password?: never;
+    };
 
 // Login response for /api/users/login/
 export type LoginUserResponse = {
@@ -71,6 +77,7 @@ export type LoginUserResponse = {
     first_name: string;
     last_name: string;
     image_url: string;
+    image_ref?: string;
     gender: string;
     date_of_birth: string;
     is_active: boolean;
@@ -86,6 +93,7 @@ export type UserProfile = {
   first_name: string;
   last_name: string;
   image_url: string;
+  image_ref?: string;
   gender: string;
   date_of_birth: string;
   created_at: string;
@@ -97,6 +105,7 @@ export type UpdateUserProfilePayload = {
   first_name?: string;
   last_name?: string;
   image_url?: string;
+  image_ref?: string;
   gender?: string;
   date_of_birth?: string;
 };

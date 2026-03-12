@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   ShoppingCart,
@@ -12,41 +12,63 @@ import {
   Phone,
   ChevronDown,
   Tag,
+  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import logoWhite from "@/assets/logo_white.png";
 import { useAuth } from "@/lib/state/auth-context";
-
-type LocationOption = "USA" | "Kenya";
+import { useLocation } from "@/lib/state/location-context";
+import { useCart } from "@/lib/state/cart-context";
+import { Subcategory, useCategoriesQuery, useSubcategoriesQuery } from "@/lib/api/products";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [locationMenuOpen, setLocationMenuOpen] = useState(false);
-  const [location, setLocation] = useState<LocationOption>("Kenya");
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const { location, setLocation } = useLocation();
   const pathname = usePathname();
-  const { auth } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { auth, clearAuth } = useAuth();
+  const { itemCount } = useCart();
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const isLoggedIn = Boolean(auth?.user);
   const displayName =
     auth?.user?.first_name || auth?.user?.last_name || auth?.user?.email || "Account";
 
   // Placeholder data - to be replaced with actual data later
-  const cartItemsCount = 0; // Placeholder: getCartItemsCount()
   const language = "EN"; // Placeholder: getLanguage()
 
   const navigationItems = [
-    { label: "Home", href: "/" },
-    { label: "Products", href: "/products" },
     { label: "Categories", href: "/categories" },
-    { label: "Deals", href: "/deals" },
-    { label: "Brands", href: "/brands" },
-    { label: "Health & Wellness", href: "/health" },
+    { label: "Endoville Living", href: "/endoville-living" },
   ];
 
-  const locationOptions: LocationOption[] = ["USA", "Kenya"];
+  const locationOptions = ["USA", "Kenya"] as const;
+  const { data: categories, isLoading: categoriesLoading } = useCategoriesQuery();
+  const { data: subcategories } = useSubcategoriesQuery();
+  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+
+  const subcategoriesByCategory = useMemo(() => {
+    const grouped: Record<number, Subcategory[]> = {};
+    (subcategories ?? []).forEach((subcategory) => {
+      if (!grouped[subcategory.category]) {
+        grouped[subcategory.category] = [];
+      }
+      grouped[subcategory.category]?.push(subcategory);
+    });
+    return grouped;
+  }, [subcategories]);
+
+  useEffect(() => {
+    if (!activeCategoryId && categories?.length) {
+      setActiveCategoryId(categories[0].id);
+    }
+  }, [activeCategoryId, categories]);
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -56,22 +78,60 @@ export default function Navbar() {
   };
 
   const handleSearch = (query: string) => {
-    // Placeholder: implementSearch(query)
-    console.log("Searching for:", query);
+    const params = new URLSearchParams(searchParams.toString());
+    if (query.trim()) {
+      params.set("search", query.trim());
+    } else {
+      params.delete("search");
+    }
+    params.delete("page");
+    const next = params.toString();
+    const basePath = pathname.startsWith("/endoville-living")
+      ? "/endoville-living"
+      : "/products";
+    router.push(next ? `${basePath}?${next}` : basePath);
+  };
+
+  const handleOpenFilters = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("filters", "1");
+    const next = params.toString();
+    router.push(next ? `/products?${next}` : "/products?filters=1");
   };
 
   const handleCartClick = () => {
-    // Placeholder: navigateToCart()
-    console.log("Navigate to cart");
+    router.push("/cart");
   };
 
-  const handleLocationSelect = (option: LocationOption) => {
+  const handleLocationSelect = (option: (typeof locationOptions)[number]) => {
     setLocation(option);
     setLocationMenuOpen(false);
   };
 
+  const handleLogout = () => {
+    clearAuth();
+    setAccountMenuOpen(false);
+    setMobileMenuOpen(false);
+    router.push("/");
+  };
+
+  useEffect(() => {
+    if (!accountMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [accountMenuOpen]);
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-white/95 shadow-sm backdrop-blur">
       {/* Top Utility Bar */}
       <div className="border-b bg-[#361340] text-white">
         <div className="container mx-auto px-4">
@@ -195,18 +255,63 @@ export default function Navbar() {
           {/* Right Side Actions - Desktop */}
           <div className="hidden md:flex items-center gap-4">
             {/* User Account */}
-            <Link
-              href={isLoggedIn ? "/account" : "/login"}
-              className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100 transition-colors group"
-              aria-label={isLoggedIn ? "My Account" : "Sign In"}
-            >
-              <div className="relative">
-                <User className="h-6 w-6 text-[#361340] group-hover:text-[#4C1C59] transition-colors" />
+            {isLoggedIn ? (
+              <div className="relative" ref={accountMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setAccountMenuOpen((open) => !open)}
+                  className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100 transition-colors group"
+                  aria-label="Open account menu"
+                  aria-expanded={accountMenuOpen}
+                  aria-haspopup="menu"
+                >
+                  <div className="relative">
+                    <User className="h-6 w-6 text-[#361340] group-hover:text-[#4C1C59] transition-colors" />
+                  </div>
+                  <span className="text-xs text-gray-600 group-hover:text-[#4C1C59] transition-colors">
+                    {`Hi, ${displayName}`}
+                  </span>
+                </button>
+                {accountMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-100 bg-white p-2 shadow-xl">
+                    <Link
+                      href="/orders"
+                      onClick={() => setAccountMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-[#4C1C59]"
+                    >
+                      Orders
+                    </Link>
+                    <Link
+                      href="/account"
+                      onClick={() => setAccountMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-[#4C1C59]"
+                    >
+                      Account
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
-              <span className="text-xs text-gray-600 group-hover:text-[#4C1C59] transition-colors">
-                {isLoggedIn ? `Hi, ${displayName}` : "Sign In"}
-              </span>
-            </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100 transition-colors group"
+                aria-label="Sign In"
+              >
+                <div className="relative">
+                  <User className="h-6 w-6 text-[#361340] group-hover:text-[#4C1C59] transition-colors" />
+                </div>
+                <span className="text-xs text-gray-600 group-hover:text-[#4C1C59] transition-colors">
+                  Sign In
+                </span>
+              </Link>
+            )}
 
             {/* Shopping Cart */}
             <button
@@ -216,9 +321,9 @@ export default function Navbar() {
             >
               <div className="relative">
                 <ShoppingCart className="h-6 w-6 text-[#361340] group-hover:text-[#4C1C59] transition-colors" />
-                {cartItemsCount > 0 && (
+                {itemCount > 0 && (
                   <span className="absolute -top-1 -right-1 h-5 w-5 bg-[#F2BA52] text-[#361340] rounded-full flex items-center justify-center text-xs font-bold">
-                    {cartItemsCount > 9 ? "9+" : cartItemsCount}
+                    {itemCount > 9 ? "9+" : itemCount}
                   </span>
                 )}
               </div>
@@ -228,24 +333,118 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6 text-[#361340]" />
-            ) : (
-              <Menu className="h-6 w-6 text-[#361340]" />
-            )}
-          </button>
+          {/* Mobile Cart + Menu */}
+          <div className="md:hidden flex items-center gap-2">
+            <button
+              onClick={handleCartClick}
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Shopping Cart"
+            >
+              <ShoppingCart className="h-6 w-6 text-[#361340]" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 bg-[#F2BA52] text-[#361340] rounded-full flex items-center justify-center text-xs font-bold">
+                  {itemCount > 9 ? "9+" : itemCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6 text-[#361340]" />
+              ) : (
+                <Menu className="h-6 w-6 text-[#361340]" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Navigation Links - Desktop */}
         <div className="hidden md:flex items-center gap-8 pb-4 ms-0.1">
+          {(categories ?? []).slice(0, 5).map((category) => {
+            const activeSubcategories =
+              (activeCategoryId ? subcategoriesByCategory[activeCategoryId] : undefined) ?? [];
+
+            return (
+              <div key={category.id} className="relative group">
+                  <Link
+                    href={`/products?category=${category.id}`}
+                  onMouseEnter={() => setActiveCategoryId(category.id)}
+                  className="text-sm font-medium transition-colors relative group text-gray-700 hover:text-[#4C1C59]"
+                >
+                  {category.name}
+                  <span className="absolute bottom-0 left-0 h-0.5 bg-[#4C1C59] transition-all duration-300 w-0 group-hover:w-full" />
+                </Link>
+
+                <div className="absolute left-0 top-full hidden pt-3 group-hover:block">
+                  <div className="w-[520px] rounded-xl bg-white p-4 shadow-xl ring-1 ring-black/5">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Categories
+                        </p>
+                        {categoriesLoading && (
+                          <span className="block text-sm text-gray-500">Loading...</span>
+                        )}
+                        {!categoriesLoading && categories?.length === 0 && (
+                          <span className="block text-sm text-gray-500">
+                            No categories found.
+                          </span>
+                        )}
+                        {(categories ?? []).map((categoryOption) => (
+                          <Link
+                            key={categoryOption.id}
+                            href={`/products?category=${categoryOption.id}`}
+                            onMouseEnter={() => setActiveCategoryId(categoryOption.id)}
+                            className={cn(
+                              "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
+                              activeCategoryId === categoryOption.id
+                                ? "bg-[#F4ECFF] text-[#4C1C59] font-semibold"
+                                : "text-gray-700 hover:bg-gray-100"
+                            )}
+                          >
+                            <span>{categoryOption.name}</span>
+                            <ChevronDown className="h-3 w-3 -rotate-90 text-gray-400" />
+                          </Link>
+                        ))}
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Subcategories
+                        </p>
+                        {activeSubcategories.length === 0 ? (
+                          <span className="block text-sm text-gray-500">
+                            Select a category to view subcategories.
+                          </span>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-2">
+                            {activeSubcategories.map((subcategory) => (
+                              <Link
+                                key={subcategory.id}
+                                href={`/products?category=${subcategory.category}&subcategory=${subcategory.id}`}
+                                className="rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 hover:text-[#4C1C59]"
+                              >
+                                {subcategory.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
           {navigationItems.map((item) => {
             const active = isActive(item.href);
+            if (item.label === "Categories") {
+              return null;
+            }
+
             return (
               <Link
                 key={item.href}
@@ -272,18 +471,28 @@ export default function Navbar() {
 
       {/* Mobile Search Bar */}
       <div className="md:hidden px-4 pb-4">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search products..."
-            className="w-full h-11 pl-10 pr-4 rounded-lg border-2 border-gray-200 focus:outline-none focus:border-[#4C1C59] text-gray-900 placeholder:text-gray-400"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSearch(e.currentTarget.value);
-              }
-            }}
-          />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Search products..."
+              className="w-full h-11 pl-10 pr-4 rounded-2xl border-2 border-gray-200 focus:outline-none focus:border-[#4C1C59] text-gray-900 placeholder:text-gray-400"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch(e.currentTarget.value);
+                }
+              }}
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenFilters}
+            className="h-11 w-11 rounded-2xl border border-gray-200 text-gray-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+            aria-label="Open filters"
+          >
+            <SlidersHorizontal className="mx-auto h-5 w-5" />
+          </button>
         </div>
       </div>
 
@@ -312,25 +521,55 @@ export default function Navbar() {
             })}
 
             {/* Mobile Actions */}
-            <div className="pt-4 border-t flex items-center gap-4">
-              <Link
-                href={isLoggedIn ? "/account" : "/login"}
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors w-full"
-              >
-                <User className="h-5 w-5 text-[#361340]" />
-                <span className="text-sm font-medium text-gray-700">
-                  {isLoggedIn ? `Hi, ${displayName}` : "Sign In"}
-                </span>
-              </Link>
+            <div className="pt-4 border-t space-y-3">
+              <div className="flex items-center gap-4">
+                <Link
+                  href={isLoggedIn ? "/account" : "/login"}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors w-full"
+                >
+                  <User className="h-5 w-5 text-[#361340]" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {isLoggedIn ? `Hi, ${displayName}` : "Sign In"}
+                  </span>
+                </Link>
+              </div>
+
+              {isLoggedIn && (
+                <div className="space-y-1 rounded-xl bg-gray-50 p-2">
+                  <Link
+                    href="/orders"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-white hover:text-[#4C1C59]"
+                  >
+                    Orders
+                  </Link>
+                  <Link
+                    href="/account"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-white hover:text-[#4C1C59]"
+                  >
+                    Account
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-white"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={handleCartClick}
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
               >
                 <ShoppingCart className="h-5 w-5 text-[#361340]" />
                 <span className="text-sm font-medium text-gray-700">Cart</span>
-                {cartItemsCount > 0 && (
+                {itemCount > 0 && (
                   <span className="h-5 w-5 bg-[#F2BA52] text-[#361340] rounded-full flex items-center justify-center text-xs font-bold">
-                    {cartItemsCount > 9 ? "9+" : cartItemsCount}
+                    {itemCount > 9 ? "9+" : itemCount}
                   </span>
                 )}
               </button>
