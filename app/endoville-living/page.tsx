@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BookOpenText, Dumbbell, Heart, Home, PlayCircle, Sparkles, Utensils } from "lucide-react";
@@ -23,7 +23,7 @@ const formatDate = (value: string) =>
 
 const sidebarIcons = [Heart, Sparkles, Dumbbell, Utensils];
 
-export default function EndovilleLivingPage() {
+function EndovilleLivingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -390,5 +390,32 @@ export default function EndovilleLivingPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function EndovilleLivingPageFallback() {
+  return (
+    <main className="mx-auto max-w-[1440px] px-4 py-8 lg:px-6">
+      <div className="space-y-10">
+        <div className="h-48 animate-pulse rounded-[28px] border border-gray-100 bg-white" />
+        <div className="h-[420px] animate-pulse rounded-[28px] border border-gray-100 bg-white" />
+        <div className="grid gap-6 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-[300px] animate-pulse rounded-[24px] border border-gray-100 bg-white"
+            />
+          ))}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function EndovilleLivingPage() {
+  return (
+    <Suspense fallback={<EndovilleLivingPageFallback />}>
+      <EndovilleLivingPageContent />
+    </Suspense>
   );
 }

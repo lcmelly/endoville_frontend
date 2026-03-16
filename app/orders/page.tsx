@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/state/auth-context";
@@ -38,7 +38,7 @@ const getShippingStatusTone = (status: string) => {
 const getPaymentStatusTone = (isFullyPaid: boolean) =>
   isFullyPaid ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700";
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const { auth } = useAuth();
   const { getOrders } = useOrdersApi();
   const { createOrderPayment } = usePaymentsApi();
@@ -408,5 +408,28 @@ export default function OrdersPage() {
         </div>
       )}
     </main>
+  );
+}
+
+function OrdersPageFallback() {
+  return (
+    <main className="container mx-auto px-4 py-16">
+      <div className="space-y-6">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-56 animate-pulse rounded-3xl border border-gray-100 bg-white"
+          />
+        ))}
+      </div>
+    </main>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<OrdersPageFallback />}>
+      <OrdersPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import ProductCard from "@/components/product-card";
@@ -25,7 +25,7 @@ const getRatingValue = (rating: string | null) => {
 
 type SortOption = "rating_desc" | "price_asc" | "price_desc" | "name_asc";
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: products, isLoading } = useProductsQuery();
@@ -400,5 +400,28 @@ export default function ProductsPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function ProductsPageFallback() {
+  return (
+    <main className="container mx-auto px-4 py-16">
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-80 animate-pulse rounded-3xl border border-gray-100 bg-white"
+          />
+        ))}
+      </div>
+    </main>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<ProductsPageFallback />}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }

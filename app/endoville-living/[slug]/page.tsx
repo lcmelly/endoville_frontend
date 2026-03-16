@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -19,7 +19,7 @@ const buildCategoryMap = (categories: BlogCategory[]) =>
     return acc;
   }, {});
 
-export default function EndovilleLivingDetailPage() {
+function EndovilleLivingDetailPageContent() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -230,5 +230,21 @@ export default function EndovilleLivingDetailPage() {
         </article>
       </div>
     </main>
+  );
+}
+
+function EndovilleLivingDetailPageFallback() {
+  return (
+    <main className="container mx-auto px-4 py-16">
+      <div className="h-[520px] animate-pulse rounded-3xl border border-gray-100 bg-white" />
+    </main>
+  );
+}
+
+export default function EndovilleLivingDetailPage() {
+  return (
+    <Suspense fallback={<EndovilleLivingDetailPageFallback />}>
+      <EndovilleLivingDetailPageContent />
+    </Suspense>
   );
 }
