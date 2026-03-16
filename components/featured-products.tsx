@@ -9,13 +9,31 @@ const getRatingValue = (rating: string | null) => {
   return Number.isFinite(value) ? value : 0;
 };
 
+const getVisibleCountForWidth = (width: number) => {
+  if (width >= 1536) {
+    return 5;
+  }
+  if (width >= 1280) {
+    return 4;
+  }
+  if (width >= 1024) {
+    return 3;
+  }
+  if (width >= 640) {
+    return 2;
+  }
+  return 2;
+};
+
 export default function FeaturedProducts() {
   const { data: products, isLoading } = useProductsQuery();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(4);
+  const [visibleCount, setVisibleCount] = useState(() =>
+    typeof window === "undefined" ? 4 : getVisibleCountForWidth(window.innerWidth)
+  );
   const [cardWidth, setCardWidth] = useState(0);
   const gapPx = 24;
 
@@ -62,18 +80,7 @@ export default function FeaturedProducts() {
 
   useEffect(() => {
     const updateVisibleCount = () => {
-      const width = window.innerWidth;
-      if (width >= 1536) {
-        setVisibleCount(5);
-      } else if (width >= 1280) {
-        setVisibleCount(4);
-      } else if (width >= 1024) {
-        setVisibleCount(3);
-      } else if (width >= 640) {
-        setVisibleCount(2);
-      } else {
-        setVisibleCount(2);
-      }
+      setVisibleCount(getVisibleCountForWidth(window.innerWidth));
     };
 
     updateVisibleCount();
