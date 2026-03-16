@@ -18,7 +18,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import logoWhite from "@/assets/logo_white.png";
 import { useAuth } from "@/lib/state/auth-context";
 import { useLocation } from "@/lib/state/location-context";
 import { useCart } from "@/lib/state/cart-context";
@@ -200,7 +199,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center shrink-0">
             <Image
-              src={logoWhite}
+              src="/logo_white.png"
               alt="Endoville Health"
               height={220}
               width={480}

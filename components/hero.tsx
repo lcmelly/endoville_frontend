@@ -3,8 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Star, Phone } from "lucide-react";
-import hero1 from "@/assets/hero1.jpg";
-import hero2 from "@/assets/hero2.jpg";
 
 export default function Hero() {
   // Placeholder data - to be replaced with actual data later
@@ -81,7 +79,7 @@ export default function Hero() {
                 {/* Top Image (larger, behind) */}
                 <div className="absolute top-0 left-0 lg:w-[90%] w-[70%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-10 lg:ms-[-10%] xlg:ms-[-20%]">
                   <Image
-                    src={hero1}
+                    src="/hero1.jpg"
                     alt="Premium supplements"
                     fill
                     className="object-cover"
@@ -92,7 +90,7 @@ export default function Hero() {
                 {/* Bottom Image (smaller, overlapping, in front) */}
                 <div className="absolute xlg:bottom-2 bottom-[10%] xlg:right-[-20%] lg:right-[-20%] lg:w-[70%] right-[-1%] w-[50%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-20 ms-[-15%] bg-[#B1D989]">
                   <Image
-                    src={hero2}
+                    src="/hero2.jpg"
                     alt="Wellness products"
                     style={{
                         backgroundColor: "#B1D989",

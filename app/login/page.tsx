@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { loginUser, sendOtp } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/state/auth-context";
-import hero2 from "@/assets/hero2.jpg";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -241,7 +240,7 @@ export default function LoginPage() {
           <div className="hidden md:block relative bg-linear-to-br from-[#B679F8] to-[#6B3EB6]">
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_left,#fff,transparent_60%)]" />
             <Image
-              src={hero2}
+              src="/hero2.jpg"
               alt="Wellness lifestyle"
               fill
               className="object-cover object-right"
