@@ -88,6 +88,33 @@ function ProductsPageContent() {
     return subcategories ?? [];
   }, [categoryId, subcategories, subcategoriesByCategory]);
 
+  const activeBrandName = useMemo(
+    () => brands?.find((brand) => brand.id === brandId)?.name ?? null,
+    [brandId, brands]
+  );
+
+  const activeCategoryName = useMemo(
+    () => categories?.find((category) => category.id === categoryId)?.name ?? null,
+    [categories, categoryId]
+  );
+
+  const activeSubcategoryName = useMemo(
+    () => subcategories?.find((subcategory) => subcategory.id === subcategoryId)?.name ?? null,
+    [subcategories, subcategoryId]
+  );
+
+  const appliedFilterValues = useMemo(
+    () =>
+      [
+        search || null,
+        activeBrandName,
+        activeCategoryName,
+        activeSubcategoryName,
+        inStockOnly ? "In stock" : null,
+      ].filter(Boolean) as string[],
+    [search, activeBrandName, activeCategoryName, activeSubcategoryName, inStockOnly]
+  );
+
   const filteredProducts = useMemo(() => {
     const min = parseNumber(minPrice);
     const max = parseNumber(maxPrice);
@@ -186,7 +213,7 @@ function ProductsPageContent() {
       <div className="flex flex-col gap-10 lg:flex-row">
         <aside className="w-full max-w-full lg:w-72">
           <div
-            className={`fixed inset-0 z-60 overflow-y-auto bg-white p-5 shadow-lg transition-transform duration-300 lg:static lg:z-auto lg:h-auto lg:translate-x-0 lg:rounded-2xl lg:border lg:border-gray-100 lg:p-5 lg:shadow-sm ${
+            className={`fixed pb-6 inset-0 z-60 overflow-y-auto bg-white p-5 shadow-lg transition-transform duration-300 lg:static lg:z-auto lg:h-auto lg:translate-x-0 lg:rounded-2xl lg:border lg:border-gray-100 lg:p-5 lg:shadow-sm ${
               filtersOpen
                 ? "translate-x-0"
                 : "-translate-x-full pointer-events-none lg:pointer-events-auto"
@@ -197,7 +224,7 @@ function ProductsPageContent() {
               <button
                 type="button"
                 onClick={closeFilters}
-                className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                className="absolute right-4 top-35 z-70 -translate-y-1/2 rounded-full bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition-colors hover:bg-red-700"
               >
                 Close
               </button>
@@ -403,8 +430,21 @@ function ProductsPageContent() {
             </div>
           </div>
 
+          {appliedFilterValues.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
+              {appliedFilterValues.map((value) => (
+                <span
+                  key={value}
+                  className="font-heading rounded-full border border-[#4C1C59]/10 bg-white px-3 py-1.5 text-xs font-bold text-[#4C1C59] shadow-sm"
+                >
+                  {value}
+                </span>
+              ))}
+            </div>
+          )}
+
           {search && (
-            <div className="mb-6 rounded-2xl border border-[#4C1C59]/10 bg-white px-5 py-4 text-sm text-gray-600 shadow-sm">
+            <div className="mb-6 hidden rounded-2xl border border-[#4C1C59]/10 bg-white px-5 py-4 text-sm text-gray-600 shadow-sm lg:block">
               Showing product results for <span className="font-heading font-bold text-[#4C1C59]">"{search}"</span>
             </div>
           )}
