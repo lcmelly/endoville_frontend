@@ -42,6 +42,7 @@ export default function Navbar() {
 
   // Placeholder data - to be replaced with actual data later
   const language = "EN"; // Placeholder: getLanguage()
+  const mobileLocationLabel = location === "Kenya" ? "KE" : "US";
 
   const navigationItems = [
     { label: "Categories", href: "/categories" },
@@ -169,7 +170,7 @@ export default function Navbar() {
                 >
                   <MapPin className="h-4 w-4" />
                   <span className="hidden sm:inline">{location}</span>
-                  <span className="sm:hidden">Loc</span>
+                  <span className="sm:hidden">{mobileLocationLabel}</span>
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 {locationMenuOpen && (
@@ -192,7 +193,7 @@ export default function Navbar() {
               <button className="flex items-center gap-1.5 hover:text-[#F2BA52] transition-colors">
                 <Globe className="h-4 w-4" />
                 <span className="hidden sm:inline">{language}</span>
-                <span className="sm:hidden">Lang</span>
+                <span className="sm:hidden">ENG</span>
                 <ChevronDown className="h-3 w-3" />
               </button>
               <Link
