@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Star, Phone } from "lucide-react";
+import { useEndovilleBrandAssets } from "@/lib/brand-assets";
 
 export default function Hero() {
   // Placeholder data - to be replaced with actual data later
   const rating = 4.8; // Placeholder: getAverageRating()
   const phoneNumber = "(123) 456-7890"; // Placeholder: getPhoneNumber()
+  const { hero1Url, hero2Url } = useEndovilleBrandAssets();
 
   return (
     <section className="relative bg-transparent py-30 md:py-55 lg:py-20 overflow-hidden">
@@ -78,26 +79,22 @@ export default function Hero() {
               <div className="relative w-full h-full max-w-lg">
                 {/* Top Image (larger, behind) */}
                 <div className="absolute top-0 left-0 lg:w-[90%] w-[70%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-10 lg:ms-[-10%] xlg:ms-[-20%]">
-                  <Image
-                    src="/hero1.jpg"
+                  <img
+                    src={hero1Url}
                     alt="Premium supplements"
-                    fill
-                    className="object-cover"
-                    priority
+                    className="h-full w-full object-cover"
                   />
                 </div>
 
                 {/* Bottom Image (smaller, overlapping, in front) */}
                 <div className="absolute xlg:bottom-2 bottom-[10%] xlg:right-[-20%] lg:right-[-20%] lg:w-[70%] right-[-1%] w-[50%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-20 ms-[-15%] bg-[#B1D989]">
-                  <Image
-                    src="/hero2.jpg"
+                  <img
+                    src={hero2Url}
                     alt="Wellness products"
                     style={{
-                        backgroundColor: "#B1D989",
+                      backgroundColor: "#B1D989",
                     }}
-                    fill
-                    className="object-cover"
-                    priority
+                    className="h-full w-full object-cover"
                   />
                 </div>
               </div>

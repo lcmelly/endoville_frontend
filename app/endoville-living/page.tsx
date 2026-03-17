@@ -91,7 +91,7 @@ function EndovilleLivingPageContent() {
             )}
           >
             <div className="mb-6 flex items-center justify-between lg:hidden">
-              <span className="text-base font-semibold text-gray-900">Wellness Hub</span>
+              <span className="text-base font-semibold text-gray-900">Endoville Living</span>
               <button
                 type="button"
                 onClick={() => setFiltersOpen(false)}
@@ -101,7 +101,7 @@ function EndovilleLivingPageContent() {
               </button>
             </div>
 
-            <h2 className="text-3xl font-semibold tracking-tight text-gray-900">Wellness Hub</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-gray-900">Endoville Living</h2>
 
             <div className="mt-8">
               <Link
@@ -205,12 +205,10 @@ function EndovilleLivingPageContent() {
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#4C1C59]">
               Endoville Living
             </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
-              Welcome to the Endoville Wellness Hub
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+              Happier, Healthier Living, Delivered to your doorstep.
             </h1>
-            <p className="mx-auto mt-4 max-w-4xl text-base font-medium leading-8 text-gray-700 sm:text-2xl sm:leading-10">
-              Your go-to place for wellness information curated around better daily health.
-            </p>
+          
             {search && (
               <p className="mt-4 text-sm font-medium text-[#4C1C59]">
                 Showing results for “{search}”

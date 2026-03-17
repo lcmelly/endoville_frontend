@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { loginUser, sendOtp } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/state/auth-context";
+import { useEndovilleBrandAssets } from "@/lib/brand-assets";
 
 export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuth();
+  const { hero2Url } = useEndovilleBrandAssets();
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [loginMethod, setLoginMethod] = useState<"password" | "otp">("password");
   const [email, setEmail] = useState("");
@@ -239,12 +240,10 @@ export default function LoginPage() {
           </div>
           <div className="hidden md:block relative bg-linear-to-br from-[#B679F8] to-[#6B3EB6]">
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_left,#fff,transparent_60%)]" />
-            <Image
-              src="/hero2.jpg"
+            <img
+              src={hero2Url}
               alt="Wellness lifestyle"
-              fill
-              className="object-cover object-right"
-              priority
+              className="absolute inset-0 h-full w-full object-cover object-right"
             />
             <div className="absolute inset-0 bg-[#4C1C59]/30" />
           </div>

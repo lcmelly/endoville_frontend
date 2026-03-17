@@ -54,6 +54,9 @@ export default function FeaturedProducts() {
   }, [topRatedProducts]);
 
   const totalItems = topRatedProducts.length;
+  const shouldUseCarousel = totalItems > visibleCount;
+  const hasMeasuredCarousel = !shouldUseCarousel || cardWidth > 0;
+  const initialVisibleProducts = topRatedProducts.slice(0, visibleCount);
 
   const handleNext = () => {
     if (totalItems <= visibleCount) {
@@ -67,16 +70,17 @@ export default function FeaturedProducts() {
     if (totalItems <= visibleCount) {
       return;
     }
+    if (currentIndex === 0) {
+      setIsAnimating(false);
+      setCurrentIndex(totalItems - 1);
+      window.requestAnimationFrame(() => {
+        setIsAnimating(true);
+      });
+      return;
+    }
     setIsAnimating(true);
     setCurrentIndex((prev) => prev - 1);
   };
-
-  useEffect(() => {
-    if (totalItems <= visibleCount) {
-      return;
-    }
-    setCurrentIndex(totalItems);
-  }, [totalItems]);
 
   useEffect(() => {
     const updateVisibleCount = () => {
@@ -108,10 +112,22 @@ export default function FeaturedProducts() {
     observer.observe(trackRef.current);
 
     return () => observer.disconnect();
-  }, [visibleCount]);
+  }, [visibleCount, totalItems, isLoading]);
 
   useEffect(() => {
-    if (totalItems <= visibleCount) {
+    if (!shouldUseCarousel || cardWidth <= 0) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      setIsAnimating(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [cardWidth, shouldUseCarousel]);
+
+  useEffect(() => {
+    if (!shouldUseCarousel || cardWidth <= 0) {
       return;
     }
     if (timerRef.current) {
@@ -127,28 +143,21 @@ export default function FeaturedProducts() {
         clearInterval(timerRef.current);
       }
     };
-  }, [totalItems, visibleCount]);
+  }, [cardWidth, shouldUseCarousel]);
 
   useEffect(() => {
-    if (totalItems <= visibleCount) {
+    if (!shouldUseCarousel) {
       return;
     }
-    if (currentIndex >= totalItems * 2 - visibleCount) {
+    if (currentIndex >= totalItems) {
       const timeout = setTimeout(() => {
         setIsAnimating(false);
-        setCurrentIndex(totalItems);
-      }, 300);
-      return () => clearTimeout(timeout);
-    }
-    if (currentIndex < totalItems) {
-      const timeout = setTimeout(() => {
-        setIsAnimating(false);
-        setCurrentIndex(totalItems + (currentIndex % totalItems));
+        setCurrentIndex(0);
       }, 300);
       return () => clearTimeout(timeout);
     }
     return undefined;
-  }, [currentIndex, totalItems, visibleCount]);
+  }, [currentIndex, shouldUseCarousel, totalItems]);
 
   return (
     <section className="bg-transparent mb-10">
@@ -176,33 +185,37 @@ export default function FeaturedProducts() {
           </div>
         ) : (
           <div className="relative">
-            <button
-              type="button"
-              onClick={handlePrev}
-              className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/90 p-3 text-gray-600 shadow-sm transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
-              aria-label="Scroll top rated products left"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              onClick={handleNext}
-              className="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/90 p-3 text-gray-600 shadow-sm transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
-              aria-label="Scroll top rated products right"
-            >
-              →
-            </button>
+            {shouldUseCarousel && hasMeasuredCarousel && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/90 p-3 text-gray-600 shadow-sm transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                  aria-label="Scroll top rated products left"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/90 p-3 text-gray-600 shadow-sm transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                  aria-label="Scroll top rated products right"
+                >
+                  →
+                </button>
+              </>
+            )}
             <div className="overflow-hidden" ref={trackRef}>
-              <div
-                className={`flex gap-6 ${
-                  isAnimating ? "transition-transform duration-300 ease-out" : ""
-                }`}
-                style={{
-                  transform: `translateX(-${currentIndex * (cardWidth + gapPx)}px)`,
-                }}
-              >
-                {(totalItems <= visibleCount ? topRatedProducts : extendedProducts).map(
-                  (product, index) => (
+              {hasMeasuredCarousel ? (
+                <div
+                  className={`flex gap-6 ${
+                    isAnimating ? "transition-transform duration-300 ease-out" : ""
+                  }`}
+                  style={{
+                    transform: `translateX(-${currentIndex * (cardWidth + gapPx)}px)`,
+                  }}
+                >
+                  {(shouldUseCarousel ? extendedProducts : topRatedProducts).map((product, index) => (
                     <div
                       key={`${product.id}-${index}`}
                       className="flex-none"
@@ -212,9 +225,20 @@ export default function FeaturedProducts() {
                     >
                       <ProductCard product={product} />
                     </div>
-                  )
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className="grid gap-6"
+                  style={{
+                    gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {initialVisibleProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

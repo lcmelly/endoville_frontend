@@ -72,6 +72,11 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         <div className="mt-3 sm:mt-4 flex flex-1 flex-col space-y-2 sm:space-y-3">
           <div className="space-y-1">
+            {product.brand_details?.name && (
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#4C1C59]">
+                {product.brand_details.name}
+              </p>
+            )}
             <h3 className="text-sm sm:text-base font-semibold text-gray-900 group-hover:text-[#4C1C59]">
               {product.name}
             </h3>

@@ -2,9 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
 import ProductCard from "@/components/product-card";
 import {
+  useBrandsQuery,
   useCategoriesQuery,
   useProductsQuery,
   useSubcategoriesQuery,
@@ -29,13 +29,15 @@ function ProductsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: products, isLoading } = useProductsQuery();
+  const { data: brands } = useBrandsQuery();
   const { data: categories } = useCategoriesQuery();
   const { data: subcategories } = useSubcategoriesQuery();
 
+  const search = searchParams.get("search") ?? "";
+  const brandParam = searchParams.get("brand");
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
 
-  const [searchTerm, setSearchTerm] = useState("");
   const [sort, setSort] = useState<SortOption>("rating_desc");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [minPrice, setMinPrice] = useState("");
@@ -44,6 +46,7 @@ function ProductsPageContent() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const pageSize = 12;
 
+  const brandId = brandParam ? Number(brandParam) : null;
   const categoryId = categoryParam ? Number(categoryParam) : null;
   const subcategoryId = subcategoryParam ? Number(subcategoryParam) : null;
 
@@ -80,11 +83,14 @@ function ProductsPageContent() {
   const filteredProducts = useMemo(() => {
     const min = parseNumber(minPrice);
     const max = parseNumber(maxPrice);
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const normalizedSearch = search.trim().toLowerCase();
 
     return (products ?? [])
       .filter((product) => {
         if (inStockOnly && product.stock <= 0) {
+          return false;
+        }
+        if (brandId && product.brand !== brandId) {
           return false;
         }
         if (categoryId && (subcategories?.length ?? 0) > 0) {
@@ -98,7 +104,7 @@ function ProductsPageContent() {
           return false;
         }
         if (normalizedSearch) {
-          const haystack = `${product.name} ${product.description}`.toLowerCase();
+          const haystack = `${product.brand_details?.name ?? ""} ${product.name} ${product.description}`.toLowerCase();
           if (!haystack.includes(normalizedSearch)) {
             return false;
           }
@@ -131,11 +137,12 @@ function ProductsPageContent() {
       });
   }, [
     products,
-    searchTerm,
+    search,
     sort,
     inStockOnly,
     minPrice,
     maxPrice,
+    brandId,
     categoryId,
     subcategoryId,
     subcategoriesByCategory,
@@ -151,7 +158,7 @@ function ProductsPageContent() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, sort, inStockOnly, minPrice, maxPrice, categoryId, subcategoryId]);
+  }, [search, sort, inStockOnly, minPrice, maxPrice, brandId, categoryId, subcategoryId]);
 
   useEffect(() => {
     if (categoryId && subcategoryId && subcategories) {
@@ -213,6 +220,28 @@ function ProductsPageContent() {
                   {category.name}
                 </button>
               ))}
+            </div>
+
+            <div className="mt-6 border-t border-gray-100 pt-5">
+              <h3 className="text-sm font-semibold text-gray-900">Brand</h3>
+              <div className="mt-3">
+                <select
+                  value={brandId ? String(brandId) : ""}
+                  onChange={(event) =>
+                    updateQuery({
+                      brand: event.target.value || null,
+                    })
+                  }
+                  className="h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm focus:border-[#4C1C59] focus:outline-none"
+                >
+                  <option value="">All brands</option>
+                  {(brands ?? []).map((brand) => (
+                    <option key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="mt-6 border-t border-gray-100 pt-5">
@@ -313,16 +342,35 @@ function ProductsPageContent() {
           <div className="mb-6 hidden flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm lg:flex lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-1 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="w-full max-w-full flex-1 hidden lg:block">
-                <div className="relative mt-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">Search: </label>
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 ms-15.5 mt-0.5" />
-                  <input
-                    value={searchTerm}
-                    type="text"
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Search supplements, vitamins, brands..."
-                    className="h-11 w-70 xl:w-120 rounded-2xl border border-gray-200 pl-9 pr-3 text-sm focus:border-[#4C1C59] focus:outline-none"
-                  />
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Brands
+                </label>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateQuery({ brand: null })}
+                    className={`font-heading rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
+                      !brandId
+                        ? "border-[#4C1C59] bg-[#F4ECFF] text-[#4C1C59]"
+                        : "border-gray-200 text-gray-700 hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                    }`}
+                  >
+                    All brands
+                  </button>
+                  {(brands ?? []).map((brand) => (
+                    <button
+                      key={brand.id}
+                      type="button"
+                      onClick={() => updateQuery({ brand: String(brand.id) })}
+                      className={`font-heading rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
+                        brandId === brand.id
+                          ? "border-[#4C1C59] bg-[#F4ECFF] text-[#4C1C59]"
+                          : "border-gray-200 text-gray-700 hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                      }`}
+                    >
+                      {brand.name}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="hidden lg:block">
@@ -342,6 +390,12 @@ function ProductsPageContent() {
               </div>
             </div>
           </div>
+
+          {search && (
+            <div className="mb-6 rounded-2xl border border-[#4C1C59]/10 bg-white px-5 py-4 text-sm text-gray-600 shadow-sm">
+              Showing product results for <span className="font-heading font-bold text-[#4C1C59]">"{search}"</span>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="grid gap-6 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

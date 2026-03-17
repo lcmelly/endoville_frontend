@@ -115,6 +115,11 @@ export default function ProductDetailPage() {
 
         <section className="space-y-8 lg:pl-4">
           <div className="space-y-6">
+            {product.brand_details?.name && (
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#4C1C59]">
+                {product.brand_details.name}
+              </span>
+            )}
             {selectedVariant && (
               <span className="text-xs font-semibold uppercase tracking-wide text-[#4C1C59]">
                 {getVariantLabel(selectedVariant)}

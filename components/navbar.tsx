@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Search,
   ShoppingCart,
@@ -15,13 +15,13 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/state/auth-context";
 import { useLocation } from "@/lib/state/location-context";
 import { useCart } from "@/lib/state/cart-context";
-import { Subcategory, useCategoriesQuery, useSubcategoriesQuery } from "@/lib/api/products";
+import { useCategoriesQuery } from "@/lib/api/products";
+import { useEndovilleBrandAssets } from "@/lib/brand-assets";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -35,6 +35,7 @@ export default function Navbar() {
   const { auth, clearAuth } = useAuth();
   const { itemCount } = useCart();
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
   const isLoggedIn = Boolean(auth?.user);
   const displayName =
     auth?.user?.first_name || auth?.user?.last_name || auth?.user?.email || "Account";
@@ -48,26 +49,8 @@ export default function Navbar() {
   ];
 
   const locationOptions = ["USA", "Kenya"] as const;
-  const { data: categories, isLoading: categoriesLoading } = useCategoriesQuery();
-  const { data: subcategories } = useSubcategoriesQuery();
-  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
-
-  const subcategoriesByCategory = useMemo(() => {
-    const grouped: Record<number, Subcategory[]> = {};
-    (subcategories ?? []).forEach((subcategory) => {
-      if (!grouped[subcategory.category]) {
-        grouped[subcategory.category] = [];
-      }
-      grouped[subcategory.category]?.push(subcategory);
-    });
-    return grouped;
-  }, [subcategories]);
-
-  useEffect(() => {
-    if (!activeCategoryId && categories?.length) {
-      setActiveCategoryId(categories[0].id);
-    }
-  }, [activeCategoryId, categories]);
+  const { data: categories } = useCategoriesQuery();
+  const { logoUrl } = useEndovilleBrandAssets();
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -76,7 +59,7 @@ export default function Navbar() {
     return pathname.startsWith(href);
   };
 
-  const handleSearch = (query: string) => {
+  const applySearch = (query: string, mode: "push" | "replace" = "push") => {
     const params = new URLSearchParams(searchParams.toString());
     if (query.trim()) {
       params.set("search", query.trim());
@@ -88,7 +71,18 @@ export default function Navbar() {
     const basePath = pathname.startsWith("/endoville-living")
       ? "/endoville-living"
       : "/products";
-    router.push(next ? `${basePath}?${next}` : basePath);
+    const nextUrl = next ? `${basePath}?${next}` : basePath;
+
+    if (mode === "replace") {
+      router.replace(nextUrl);
+      return;
+    }
+
+    router.push(nextUrl);
+  };
+
+  const handleSearch = (query: string) => {
+    applySearch(query, "push");
   };
 
   const handleOpenFilters = () => {
@@ -128,6 +122,27 @@ export default function Navbar() {
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [accountMenuOpen]);
+
+  useEffect(() => {
+    setSearchInput(searchParams.get("search") ?? "");
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (pathname !== "/products") {
+      return;
+    }
+
+    const currentSearch = searchParams.get("search") ?? "";
+    if (searchInput === currentSearch) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      applySearch(searchInput, "replace");
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [pathname, searchInput, searchParams]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-white/95 shadow-sm backdrop-blur">
@@ -198,13 +213,10 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-20 gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center shrink-0">
-            <Image
-              src="/logo_white.png"
+            <img
+              src={logoUrl}
               alt="Endoville Health"
-              height={220}
-              width={480}
               className="h-10 md:h-12 lg:h-14 w-auto object-contain"
-              priority
             />
           </Link>
 
@@ -218,6 +230,7 @@ export default function Navbar() {
             >
               <input
                 type="text"
+                value={searchInput}
                 placeholder="Search products, brands, and more..."
                 className={cn(
                   "w-full h-12 pl-12 pr-4 rounded-lg border-2 border-gray-200",
@@ -225,6 +238,7 @@ export default function Navbar() {
                   "transition-all duration-200",
                   "text-gray-900 placeholder:text-gray-400"
                 )}
+                onChange={(e) => setSearchInput(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
                 onKeyDown={(e) => {
@@ -362,82 +376,16 @@ export default function Navbar() {
 
         {/* Navigation Links - Desktop */}
         <div className="hidden md:flex items-center gap-8 pb-4 ms-0.1">
-          {(categories ?? []).slice(0, 5).map((category) => {
-            const activeSubcategories =
-              (activeCategoryId ? subcategoriesByCategory[activeCategoryId] : undefined) ?? [];
-
-            return (
-              <div key={category.id} className="relative group">
-                  <Link
-                    href={`/products?category=${category.id}`}
-                  onMouseEnter={() => setActiveCategoryId(category.id)}
-                  className="text-sm font-medium transition-colors relative group text-gray-700 hover:text-[#4C1C59]"
-                >
-                  {category.name}
-                  <span className="absolute bottom-0 left-0 h-0.5 bg-[#4C1C59] transition-all duration-300 w-0 group-hover:w-full" />
-                </Link>
-
-                <div className="absolute left-0 top-full hidden pt-3 group-hover:block">
-                  <div className="w-[520px] rounded-xl bg-white p-4 shadow-xl ring-1 ring-black/5">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Categories
-                        </p>
-                        {categoriesLoading && (
-                          <span className="block text-sm text-gray-500">Loading...</span>
-                        )}
-                        {!categoriesLoading && categories?.length === 0 && (
-                          <span className="block text-sm text-gray-500">
-                            No categories found.
-                          </span>
-                        )}
-                        {(categories ?? []).map((categoryOption) => (
-                          <Link
-                            key={categoryOption.id}
-                            href={`/products?category=${categoryOption.id}`}
-                            onMouseEnter={() => setActiveCategoryId(categoryOption.id)}
-                            className={cn(
-                              "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
-                              activeCategoryId === categoryOption.id
-                                ? "bg-[#F4ECFF] text-[#4C1C59] font-semibold"
-                                : "text-gray-700 hover:bg-gray-100"
-                            )}
-                          >
-                            <span>{categoryOption.name}</span>
-                            <ChevronDown className="h-3 w-3 -rotate-90 text-gray-400" />
-                          </Link>
-                        ))}
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Subcategories
-                        </p>
-                        {activeSubcategories.length === 0 ? (
-                          <span className="block text-sm text-gray-500">
-                            Select a category to view subcategories.
-                          </span>
-                        ) : (
-                          <div className="grid grid-cols-1 gap-2">
-                            {activeSubcategories.map((subcategory) => (
-                              <Link
-                                key={subcategory.id}
-                                href={`/products?category=${subcategory.category}&subcategory=${subcategory.id}`}
-                                className="rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 hover:text-[#4C1C59]"
-                              >
-                                {subcategory.name}
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {(categories ?? []).slice(0, 5).map((category) => (
+            <Link
+              key={category.id}
+              href={`/products?category=${category.id}`}
+              className="font-heading group relative text-sm font-bold text-gray-700 transition-colors hover:text-[#4C1C59]"
+            >
+              {category.name}
+              <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-[#4C1C59] transition-all duration-300 group-hover:w-full" />
+            </Link>
+          ))}
           {navigationItems.map((item) => {
             const active = isActive(item.href);
             if (item.label === "Categories") {
@@ -449,16 +397,22 @@ export default function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "text-sm font-medium transition-colors relative group",
+                  "relative group text-sm transition-colors",
+                  item.label === "Endoville Living" && "font-heading font-bold",
                   active
-                    ? "text-[#4C1C59] font-semibold"
-                    : "text-gray-700 hover:text-[#4C1C59]"
+                    ? item.label === "Endoville Living"
+                      ? "text-[#7B9450]"
+                      : "text-[#4C1C59] font-semibold"
+                    : item.label === "Endoville Living"
+                      ? "text-[#7B9450] hover:text-[#6B8447]"
+                      : "text-gray-700 hover:text-[#4C1C59]"
                 )}
               >
                 {item.label}
                 <span
                   className={cn(
-                    "absolute bottom-0 left-0 h-0.5 bg-[#4C1C59] transition-all duration-300",
+                    "absolute bottom-0 left-0 h-0.5 transition-all duration-300",
+                    item.label === "Endoville Living" ? "bg-[#7B9450]" : "bg-[#4C1C59]",
                     active ? "w-full" : "w-0 group-hover:w-full"
                   )}
                 />
@@ -474,8 +428,10 @@ export default function Navbar() {
           <div className="relative flex-1">
             <input
               type="text"
+              value={searchInput}
               placeholder="Search products..."
               className="w-full h-11 pl-10 pr-4 rounded-2xl border-2 border-gray-200 focus:outline-none focus:border-[#4C1C59] text-gray-900 placeholder:text-gray-400"
+              onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleSearch(e.currentTarget.value);
@@ -508,10 +464,15 @@ export default function Navbar() {
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "block py-2 font-medium transition-colors",
+                    "block py-2 transition-colors",
+                    item.label === "Endoville Living" && "font-heading font-bold",
                     active
-                      ? "text-[#4C1C59] font-semibold border-l-4 border-[#4C1C59] pl-3"
-                      : "text-gray-700 hover:text-[#4C1C59]"
+                      ? item.label === "Endoville Living"
+                        ? "border-l-4 border-[#7B9450] pl-3 text-[#7B9450]"
+                        : "text-[#4C1C59] font-semibold border-l-4 border-[#4C1C59] pl-3"
+                      : item.label === "Endoville Living"
+                        ? "text-[#7B9450] hover:text-[#6B8447]"
+                        : "text-gray-700 hover:text-[#4C1C59]"
                   )}
                 >
                   {item.label}

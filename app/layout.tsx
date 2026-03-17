@@ -1,14 +1,21 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Lato, Raleway } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar";
 import Providers from "@/app/providers";
 import AnimatedBackground from "@/components/animated-background";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const lato = Lato({
+  variable: "--font-lato",
   subsets: ["latin"],
+  weight: ["300", "400", "700", "900"],
+});
+
+const raleway = Raleway({
+  variable: "--font-raleway",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const geistMono = Geist_Mono({
@@ -29,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${lato.variable} ${raleway.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
           <AnimatedBackground>

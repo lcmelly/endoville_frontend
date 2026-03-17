@@ -45,10 +45,21 @@ export type ProductVariant = {
   currency_symbol: string;
 };
 
+export type Brand = {
+  id: number;
+  name: string;
+  image_urls: string[];
+  image_refs: string[];
+  image_labels: string[];
+  description: string | null;
+};
+
 export type Product = {
   id: number;
   name: string;
   description: string;
+  brand: number | null;
+  brand_details?: Brand | null;
   price: string;
   display_currency: string;
   currency_symbol: string;
@@ -112,6 +123,8 @@ export const fetchProductById = (id: number, params?: ProductsQueryParams) => {
 
 export const fetchCategories = () => apiFetch<Category[]>("/api/products/categories/");
 
+export const fetchBrands = () => apiFetch<Brand[]>("/api/products/brands/");
+
 export const fetchSubcategories = () =>
   apiFetch<Subcategory[]>("/api/products/subcategories/");
 
@@ -144,6 +157,12 @@ export const useCategoriesQuery = () =>
     queryFn: fetchCategories,
   });
 
+export const useBrandsQuery = () =>
+  useQuery({
+    queryKey: ["brands"],
+    queryFn: fetchBrands,
+  });
+
 export const useSubcategoriesQuery = () =>
   useQuery({
     queryKey: ["subcategories"],
@@ -152,9 +171,11 @@ export const useSubcategoriesQuery = () =>
 
 export const productApi = {
   fetchCategories,
+  fetchBrands,
   fetchProductById,
   fetchProducts,
   fetchSubcategories,
+  useBrandsQuery,
   useCategoriesQuery,
   useProductByIdQuery,
   useProductsQuery,
