@@ -34,6 +34,7 @@ function ProductsPageContent() {
   const { data: subcategories } = useSubcategoriesQuery();
 
   const search = searchParams.get("search") ?? "";
+  const filtersParam = searchParams.get("filters");
   const brandParam = searchParams.get("brand");
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
@@ -61,6 +62,13 @@ function ProductsPageContent() {
     });
     const query = params.toString();
     router.push(query ? `/products?${query}` : "/products");
+  };
+
+  const closeFilters = () => {
+    setFiltersOpen(false);
+    if (filtersParam) {
+      updateQuery({ filters: null });
+    }
   };
 
   const subcategoriesByCategory = useMemo(() => {
@@ -169,6 +177,10 @@ function ProductsPageContent() {
     }
   }, [categoryId, subcategoryId, subcategories]);
 
+  useEffect(() => {
+    setFiltersOpen(filtersParam === "1");
+  }, [filtersParam]);
+
   return (
     <main className="container mx-auto px-4 py-16">
       <div className="flex flex-col gap-10 lg:flex-row">
@@ -184,7 +196,7 @@ function ProductsPageContent() {
               <span className="text-base font-semibold text-gray-900">Filters</span>
               <button
                 type="button"
-                onClick={() => setFiltersOpen(false)}
+                onClick={closeFilters}
                 className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
               >
                 Close

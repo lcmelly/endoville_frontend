@@ -211,13 +211,13 @@ export default function Navbar() {
 
       {/* Main Navbar */}
       <nav className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-20 gap-4">
+        <div className="flex h-16 items-center justify-between gap-3 md:h-20 md:gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center shrink-0">
             <img
               src={logoUrl}
               alt="Endoville Health"
-              className="h-10 md:h-12 lg:h-14 w-auto object-contain"
+              className="h-8 md:h-12 lg:h-14 w-auto object-contain"
             />
           </Link>
 
@@ -424,7 +424,7 @@ export default function Navbar() {
       </nav>
 
       {/* Mobile Search Bar */}
-      <div className="md:hidden px-4 pb-4">
+      <div className="md:hidden px-3 pb-2 mt-[-5px]">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <input
@@ -444,7 +444,7 @@ export default function Navbar() {
           <button
             type="button"
             onClick={handleOpenFilters}
-            className="h-11 w-11 rounded-2xl border border-gray-200 text-gray-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+            className="h-11 me-7.5 w-11 rounded-2xl border border-gray-200 text-gray-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
             aria-label="Open filters"
           >
             <SlidersHorizontal className="mx-auto h-5 w-5" />
