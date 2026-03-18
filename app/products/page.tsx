@@ -287,8 +287,8 @@ function ProductsPageContent() {
               <h3 className="text-sm font-semibold text-gray-900">Price range</h3>
               <div className="mt-3 flex gap-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Min
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-400 me-5">
+                    Min :
                   </label>
                   <input
                     value={minPrice}
@@ -299,8 +299,8 @@ function ProductsPageContent() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Max
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-400 me-5">
+                    Max :
                   </label>
                   <input
                     value={maxPrice}
@@ -362,7 +362,7 @@ function ProductsPageContent() {
             </div>
 
             <div className="mt-6 border-t border-gray-100 pt-5 lg:hidden">
-              <label className="text-sm font-semibold text-gray-900">Sort by</label>
+              <label className="text-sm font-semibold text-gray-900">Sort by :</label>
               <select
                 value={sort}
                 onChange={(event) => setSort(event.target.value as SortOption)}
@@ -413,8 +413,8 @@ function ProductsPageContent() {
                 </div>
               </div>
               <div className="hidden lg:block">
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  Sort by
+                <label className="text-xs me-5 font-semibold uppercase tracking-wide text-gray-400">
+                  Sort by :
                 </label>
                 <select
                   value={sort}

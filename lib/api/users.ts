@@ -85,6 +85,11 @@ export type LoginUserResponse = {
   };
 };
 
+// Google login payload for /api/users/google-login/
+export type GoogleLoginPayload = {
+  access_token: string;
+};
+
 // User profile shape returned by /api/users/me/
 export type UserProfile = {
   id: number;
@@ -142,6 +147,14 @@ export const loginUser = (payload: LoginUserPayload) =>
     body: JSON.stringify(payload),
   });
 
+// Login user with Google OAuth token; no auth required.
+export const googleLogin = (payload: GoogleLoginPayload) =>
+  apiFetch<LoginUserResponse>("/api/users/google-login/", {
+    method: "POST",
+    // No auth headers for Google login.
+    body: JSON.stringify(payload),
+  });
+
 // Internal helper: fetch profile using a supplied access token.
 const getMeWithToken = (accessToken: string) =>
   apiFetch<UserProfile>("/api/users/me/", {
@@ -194,5 +207,6 @@ export const userApi = {
   activateUser,
   sendOtp,
   loginUser,
+  googleLogin,
   useUserApi,
 };

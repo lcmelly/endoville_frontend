@@ -13,6 +13,9 @@ import {
   ChevronDown,
   Tag,
   SlidersHorizontal,
+  ShoppingBag,
+  Settings,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -291,22 +294,25 @@ export default function Navbar() {
                     <Link
                       href="/orders"
                       onClick={() => setAccountMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-[#4C1C59]"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-[#4C1C59]"
                     >
+                      <ShoppingBag className="h-4 w-4" />
                       Orders
                     </Link>
                     <Link
                       href="/account"
                       onClick={() => setAccountMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-[#4C1C59]"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-[#4C1C59]"
                     >
+                      <Settings className="h-4 w-4" />
                       Account
                     </Link>
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                     >
+                      <LogOut className="h-4 w-4" />
                       Logout
                     </button>
                   </div>

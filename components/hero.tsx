@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Star, Phone } from "lucide-react";
+import { CheckCircle, Phone, Star } from "lucide-react";
 import { useEndovilleBrandAssets } from "@/lib/brand-assets";
 
 export default function Hero() {
@@ -11,7 +11,7 @@ export default function Hero() {
   const { hero1Url, hero2Url } = useEndovilleBrandAssets();
 
   return (
-    <section className="relative bg-transparent py-30 md:py-55 lg:py-20 overflow-hidden">
+    <section className="relative bg-transparent pt-30 pb-20 md:py-55 lg:py-20 overflow-hidden">
       <div className="container mx-auto pl-2 pr-4 relative z-10">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center relative">
           {/* Left Content */}
@@ -24,8 +24,8 @@ export default function Hero() {
             </div>
 
             {/* Main Heading */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              Premium supplements for your wellness journey
+            <h1 className="text-3xl md:text-3xl lg:text-5xl font-bold text-gray-900 leading-tight">
+            Premium Health Supplements & Vitamins for Your Wellness Journey
             </h1>
 
             {/* Description */}
@@ -101,7 +101,72 @@ export default function Hero() {
             </div>
           </div>
         </div>
+
+        <div className="mt-[-10px] lg:mt-[-36px] text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Why Choose Endoville Health?
+          </h2>
+          <ul className="relative mt-6 h-8 text-gray-700 max-w-3xl mx-auto">
+            <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "0s" }}>
+              <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
+              <span className="mt-6">
+                <strong>Science-Backed Formulations</strong> — Every supplement is developed with
+                clinically-researched ingredients at effective dosages.
+              </span>
+            </li>
+            <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "6s" }}>
+              <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
+              <span className="truncate">
+                <strong>Third-Party Tested</strong> — Independent lab testing ensures purity,
+                potency, and safety in every batch.
+              </span>
+            </li>
+            <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "12s" }}>
+              <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
+              <span className="truncate">
+                <strong>Sustainably Sourced</strong> — We prioritize eco-friendly packaging
+                and ethically sourced ingredients.
+              </span>
+            </li>
+            <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "18s" }}>
+              <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
+              <span className="truncate">
+                <strong>Expert-Curated Selection</strong> — Our team of nutritionists and health
+                professionals handpick every product.
+              </span>
+            </li>
+          </ul>
+        </div>
       </div>
+      <style jsx>{`
+        .rotating-line {
+          opacity: 0;
+          animation: rotateLine 24s ease-in-out infinite;
+        }
+
+        @keyframes rotateLine {
+          0% {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          5% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          20% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          25% {
+            opacity: 0;
+            transform: translateY(-6px);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+        }
+      `}</style>
     </section>
   );
 }

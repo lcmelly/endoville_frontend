@@ -1,16 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { activateUser, registerUser } from "@/lib/api/users";
+import { activateUser, googleLogin, registerUser } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { useEndovilleBrandAssets } from "@/lib/brand-assets";
+import { useAuth } from "@/lib/state/auth-context";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (options: {
+            client_id: string;
+            scope: string;
+            callback: (response: { access_token?: string }) => void;
+          }) => { requestAccessToken: () => void };
+        };
+      };
+    };
+  }
+}
 
 export default function SignupPage() {
   const router = useRouter();
+  const { setAuth } = useAuth();
   const { hero1Url } = useEndovilleBrandAssets();
+  const tokenClientRef = useRef<{ requestAccessToken: () => void } | null>(null);
   const [step, setStep] = useState<"register" | "activate">("register");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -18,9 +37,12 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleRegister = async () => {
     setError(null);
@@ -78,6 +100,71 @@ export default function SignupPage() {
       return capitalize(err.message);
     }
     return capitalize(fallback);
+  };
+
+  useEffect(() => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return;
+    }
+
+    const initializeClient = () => {
+      if (!window.google?.accounts?.oauth2) {
+        return;
+      }
+      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "email profile",
+        callback: async (response) => {
+          if (!response.access_token) {
+            setError("Google signup failed. Please try again.");
+            setGoogleLoading(false);
+            return;
+          }
+          try {
+            const loginResponse = await googleLogin({ access_token: response.access_token });
+            setAuth(loginResponse);
+            router.push("/");
+          } catch (err) {
+            setError(getErrorMessage(err, "Google signup failed."));
+          } finally {
+            setGoogleLoading(false);
+          }
+        },
+      });
+      setGoogleReady(true);
+    };
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[data-google-identity="true"]'
+    );
+    if (existingScript) {
+      initializeClient();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleIdentity = "true";
+    script.onload = initializeClient;
+    document.body.appendChild(script);
+  }, [getErrorMessage, router, setAuth]);
+
+  const handleGoogleSignup = () => {
+    setError(null);
+    setStatus(null);
+    if (!agreeToTerms) {
+      setError("Please agree to the Terms of Use and Privacy Policy to continue.");
+      return;
+    }
+    if (!tokenClientRef.current) {
+      setError("Google signup is not ready yet.");
+      return;
+    }
+    setGoogleLoading(true);
+    tokenClientRef.current.requestAccessToken();
   };
 
   return (
@@ -164,13 +251,74 @@ export default function SignupPage() {
                   {error && <p className="text-sm text-red-600">{error}</p>}
                   {status && <p className="text-sm text-green-600">{status}</p>}
 
+                  <label className="flex items-start gap-3 text-sm text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={agreeToTerms}
+                      onChange={(event) => setAgreeToTerms(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#4C1C59] focus:ring-[#4C1C59]"
+                    />
+                    <span>
+                      I agree to the{" "}
+                      <Link href="/terms" className="font-semibold text-[#4C1C59]">
+                        Terms of Use
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="/privacy" className="font-semibold text-[#4C1C59]">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+
                   <button
                     type="button"
                     className="w-full h-11 rounded-md bg-[#4C1C59] text-white font-medium transition-colors hover:bg-[#361340] disabled:opacity-60 disabled:cursor-not-allowed"
                     onClick={handleRegister}
-                    disabled={loading || !email || !password || !firstName || !lastName}
+                    disabled={
+                      loading || !email || !password || !firstName || !lastName || !agreeToTerms
+                    }
                   >
                     {loading ? "Creating account..." : "Create account"}
+                  </button>
+
+                  <div className="relative flex items-center gap-4">
+                    <span className="h-px flex-1 bg-gray-200" />
+                    <span className="text-xs uppercase tracking-wide text-gray-400">Or</span>
+                    <span className="h-px flex-1 bg-gray-200" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignup}
+                    disabled={!googleReady || googleLoading || !agreeToTerms}
+                    className="w-full h-11 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 transition-colors hover:border-[#4C1C59]/40 hover:bg-[#4C1C59]/5 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 48 48"
+                        aria-hidden="true"
+                      >
+                        <path
+                          fill="#EA4335"
+                          d="M24 9.5c3.54 0 6.71 1.23 9.22 3.24l6.89-6.89C35.89 2.11 30.28 0 24 0 14.64 0 6.48 5.38 2.56 13.22l8.02 6.23C12.28 13.15 17.7 9.5 24 9.5z"
+                        />
+                        <path
+                          fill="#4285F4"
+                          d="M46.5 24.5c0-1.57-.14-3.09-.4-4.56H24v8.64h12.7c-.55 2.93-2.21 5.41-4.7 7.07l7.2 5.6c4.19-3.87 6.3-9.56 6.3-16.75z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M10.58 28.95a14.6 14.6 0 0 1-.77-4.45c0-1.55.27-3.05.77-4.45l-8.02-6.23A24.04 24.04 0 0 0 0 24.5c0 3.88.93 7.55 2.56 10.68l8.02-6.23z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M24 48c6.48 0 11.92-2.14 15.9-5.8l-7.2-5.6c-2 1.34-4.56 2.13-8.7 2.13-6.3 0-11.72-3.65-13.42-8.95l-8.02 6.23C6.48 42.62 14.64 48 24 48z"
+                        />
+                      </svg>
+                      {googleLoading ? "Connecting..." : "Continue with Google"}
+                    </span>
                   </button>
                 </>
               ) : (
