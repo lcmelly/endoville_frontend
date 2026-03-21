@@ -2,14 +2,17 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/state/auth-context";
 import { Order, useOrdersApi } from "@/lib/api/orders";
 import { useProductsQuery } from "@/lib/api/products";
 import { useToast } from "@/lib/state/toast-context";
-import { usePaymentsApi } from "@/lib/api/payments";
+import { OrderPaymentBlock } from "@/components/order-payment-block";
+import { useLocation } from "@/lib/state/location-context";
+import { formatOrderMoney } from "@/lib/currency-display";
 
-type PaymentOption = "mpesa" | "card";
+const PREVIEW_ITEM_COUNT = 2;
 
 const formatStatusLabel = (status: string) =>
   status
@@ -41,26 +44,22 @@ const getPaymentStatusTone = (isFullyPaid: boolean) =>
 function OrdersPageContent() {
   const { auth } = useAuth();
   const { getOrders } = useOrdersApi();
-  const { createOrderPayment } = usePaymentsApi();
   const { data: products } = useProductsQuery();
+  const { location } = useLocation();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
-  const [selectedPaymentOption, setSelectedPaymentOption] = useState<
-    Record<number, PaymentOption>
-  >({});
-  const [mpesaPhones, setMpesaPhones] = useState<Record<number, string>>({});
-
-  const getPaymentOption = (order: Order) => selectedPaymentOption[order.id] ?? "card";
-  const getMpesaPhone = (order: Order) => mpesaPhones[order.id] ?? "";
   const productImageById = useMemo(
     () =>
       new Map(
         (products ?? []).map((product) => [product.id, product.image_urls?.[0] ?? null])
       ),
+    [products]
+  );
+  const productById = useMemo(
+    () => new Map((products ?? []).map((product) => [product.id, product])),
     [products]
   );
 
@@ -167,15 +166,27 @@ function OrdersPageContent() {
             >
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <Link
+                    href={`/orders/${order.id}`}
+                    className="text-sm font-semibold text-gray-900 hover:text-[#4C1C59] hover:underline"
+                  >
                     Order #{order.id}
-                  </p>
+                  </Link>
                   <p className="text-xs text-gray-500">
                     Placed on {new Date(order.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="text-sm font-semibold text-[#4C1C59]">
-                  {order.total}
+                <div className="flex flex-col items-end gap-1 text-right">
+                  <div className="text-sm font-semibold text-[#4C1C59]">
+                    {formatOrderMoney(order.total, { location })}
+                  </div>
+                  <Link
+                    href={`/orders/${order.id}`}
+                    className="inline-flex items-center gap-0.5 text-xs font-semibold text-[#4C1C59] transition-colors hover:text-[#361340] hover:underline"
+                  >
+                    More Details
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  </Link>
                 </div>
               </div>
 
@@ -185,43 +196,87 @@ function OrdersPageContent() {
                     Products in this order
                   </h3>
                   <div className="mt-3 space-y-3">
-                    {order.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white">
-                            {item.product && productImageById.get(item.product) ? (
-                              <img
-                                src={productImageById.get(item.product) ?? ""}
-                                alt={item.product_name}
-                                className="h-full w-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                                No image
-                              </div>
-                            )}
+                    {order.items.slice(0, PREVIEW_ITEM_COUNT).map((item) => {
+                      const catalogProduct = item.product
+                        ? productById.get(item.product)
+                        : undefined;
+                      const productHref =
+                        catalogProduct?.slug && catalogProduct.slug.length > 0
+                          ? `/products/${catalogProduct.slug}`
+                          : null;
+                      const rowClassName =
+                        "flex items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3";
+                      const interactiveClass = productHref
+                        ? " transition-colors hover:border-[#4C1C59]/35 hover:bg-white"
+                        : "";
+
+                      const body = (
+                        <>
+                          <div className="flex items-start gap-3">
+                            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white">
+                              {item.product && productImageById.get(item.product) ? (
+                                <img
+                                  src={productImageById.get(item.product) ?? ""}
+                                  alt={item.product_name}
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                  No image
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {item.product_name}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">
+                                Quantity: {item.quantity}
+                                {item.variant_description
+                                  ? ` • ${item.variant_description}`
+                                  : ""}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {item.product_name}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-500">
-                              Quantity: {item.quantity}
-                              {item.variant_description
-                                ? ` • ${item.variant_description}`
-                                : ""}
-                            </p>
-                          </div>
+                          <span className="text-sm font-semibold text-[#4C1C59]">
+                            {formatOrderMoney(item.line_total, {
+                              location,
+                              symbolOverride: item.product
+                                ? productById.get(item.product)?.currency_symbol
+                                : undefined,
+                            })}
+                          </span>
+                        </>
+                      );
+
+                      return productHref ? (
+                        <Link
+                          key={item.id}
+                          href={productHref}
+                          className={`${rowClassName}${interactiveClass}`}
+                        >
+                          {body}
+                        </Link>
+                      ) : (
+                        <div key={item.id} className={rowClassName}>
+                          {body}
                         </div>
-                        <span className="text-sm font-semibold text-[#4C1C59]">
-                          {item.line_total}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
+                    {order.items.length > PREVIEW_ITEM_COUNT && (
+                      <p className="text-sm text-gray-500">
+                        +{order.items.length - PREVIEW_ITEM_COUNT} more{" "}
+                        {order.items.length - PREVIEW_ITEM_COUNT === 1 ? "item" : "items"}{" "}
+                        <Link
+                          href={`/orders/${order.id}`}
+                          className="inline-flex items-center gap-0.5 font-semibold text-[#4C1C59] hover:underline"
+                        >
+                          Expand order
+                          <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        </Link>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -260,133 +315,21 @@ function OrdersPageContent() {
                   <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                     <span>
                       Shipping:{" "}
-                      <span className="font-medium text-gray-900">{order.shipping_fee}</span>
+                      <span className="font-medium text-gray-900">
+                        {formatOrderMoney(order.shipping_fee, { location })}
+                      </span>
                     </span>
                     <span>
-                      Total: <span className="font-semibold text-[#4C1C59]">{order.total}</span>
+                      Total:{" "}
+                      <span className="font-semibold text-[#4C1C59]">
+                        {formatOrderMoney(order.total, { location })}
+                      </span>
                     </span>
                   </div>
                 </div>
               </div>
 
-              {!order.is_fully_paid && (
-                <div className="mt-6 rounded-2xl border border-gray-100 bg-[#F9F6FF] p-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-900">Make payment</h3>
-                  </div>
-
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedPaymentOption((prev) => ({
-                          ...prev,
-                          [order.id]: "mpesa",
-                        }))
-                      }
-                      className={`flex items-center justify-center rounded-lg border px-3 py-0 transition-colors ${
-                        getPaymentOption(order) === "mpesa"
-                          ? "border-[#4C1C59] bg-white ring-2 ring-[#4C1C59]/30"
-                          : "border-gray-200 bg-white hover:border-[#4C1C59]/40"
-                      }`}
-                    >
-                      <img
-                        src="/mpesa.png"
-                        alt="M-Pesa"
-                        className="h-10 w-auto max-w-[140px] object-contain"
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedPaymentOption((prev) => ({
-                          ...prev,
-                          [order.id]: "card",
-                        }))
-                      }
-                      className={`flex items-center justify-center rounded-lg border px-3 py-0 transition-colors ${
-                        getPaymentOption(order) === "card"
-                          ? "border-[#4C1C59] bg-white ring-2 ring-[#4C1C59]/30"
-                          : "border-gray-200 bg-white hover:border-[#4C1C59]/40"
-                      }`}
-                    >
-                      <img
-                        src="/visa_mastercard.png"
-                        alt="Visa and Mastercard"
-                        className="h-10 w-auto max-w-[160px] object-contain"
-                      />
-                    </button>
-                  </div>
-
-                  {getPaymentOption(order) === "mpesa" && (
-                    <div className="mt-3">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                        M-Pesa phone number
-                      </label>
-                      <input
-                        value={getMpesaPhone(order)}
-                        onChange={(event) =>
-                          setMpesaPhones((prev) => ({
-                            ...prev,
-                            [order.id]: event.target.value,
-                          }))
-                        }
-                        placeholder="0712345678"
-                        className="mt-2 h-10 w-full rounded-lg border border-gray-200 px-3 text-sm focus:border-[#4C1C59] focus:outline-none"
-                      />
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    disabled={payingOrderId === order.id}
-                    onClick={async () => {
-                      try {
-                        setPayingOrderId(order.id);
-                        const origin = window.location.origin;
-                        const paymentOption = getPaymentOption(order);
-                        if (paymentOption === "mpesa" && !getMpesaPhone(order).trim()) {
-                          throw new Error("Enter a phone number for M-Pesa.");
-                        }
-                        const payment = await createOrderPayment({
-                          order: order.id,
-                          provider: paymentOption === "card" ? "stripe" : "intasend",
-                          method: paymentOption === "mpesa" ? "stk" : "checkout",
-                          phone_number:
-                            paymentOption === "mpesa" ? getMpesaPhone(order) : undefined,
-                          email: order.shipping_address?.email ?? auth?.user?.email ?? undefined,
-                          success_url: `${origin}/orders?payment=success`,
-                          cancel_url: `${origin}/orders?payment=failed`,
-                        });
-                        if (payment.checkout_url) {
-                          window.location.assign(payment.checkout_url);
-                          return;
-                        }
-                        showToast(
-                          paymentOption === "mpesa"
-                            ? "M-Pesa prompt sent to your phone."
-                            : "Payment initiated."
-                        );
-                      } catch (err) {
-                        showToast(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to initiate payment."
-                        );
-                      } finally {
-                        setPayingOrderId(null);
-                      }
-                    }}
-                    className="mt-4 w-full rounded-lg bg-[#361340] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2a0f32] disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {payingOrderId === order.id
-                      ? "Processing..."
-                      : getPaymentOption(order) === "mpesa"
-                      ? "Pay with M-Pesa"
-                      : "Pay with Card"}
-                  </button>
-                </div>
-              )}
+              <OrderPaymentBlock order={order} authEmail={auth?.user?.email} />
             </div>
           ))}
         </div>

@@ -68,6 +68,12 @@ export type Product = {
   barcode: string | null;
   image_urls: string[];
   image_refs: string[];
+  /** Highlight on listing / detail when true */
+  featured?: boolean;
+  /** Short marketing copy for product benefits */
+  benefits?: string | null;
+  ingredients?: string | null;
+  how_to_use?: string | null;
   subcategories: number[];
   meta_title: string | null;
   meta_description: string | null;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
-import { Minus, Plus, Star } from "lucide-react";
+import { Award, Minus, Plus, Star } from "lucide-react";
 import { useProductByIdQuery, useProductsQuery } from "@/lib/api/products";
 import { useCart } from "@/lib/state/cart-context";
 import { useToast } from "@/lib/state/toast-context";
@@ -24,6 +24,8 @@ const getVariantLabel = (variant: { options_details?: { value: string }[] }) => 
   return "Variant";
 };
 
+type ProductDetailTab = "benefits" | "ingredients" | "how_to_use";
+
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
   const { data: products } = useProductsQuery();
@@ -41,6 +43,29 @@ export default function ProductDetailPage() {
   );
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+  const [detailTab, setDetailTab] = useState<ProductDetailTab>("benefits");
+
+  const availableDetailTabs = useMemo(() => {
+    if (!product) return [] as { id: ProductDetailTab; label: string; body: string }[];
+    const list: { id: ProductDetailTab; label: string; body: string }[] = [];
+    if (product.benefits?.trim()) {
+      list.push({ id: "benefits", label: "Benefits", body: product.benefits.trim() });
+    }
+    if (product.ingredients?.trim()) {
+      list.push({ id: "ingredients", label: "Ingredients", body: product.ingredients.trim() });
+    }
+    if (product.how_to_use?.trim()) {
+      list.push({ id: "how_to_use", label: "How to use", body: product.how_to_use.trim() });
+    }
+    return list;
+  }, [product]);
+
+  useEffect(() => {
+    if (availableDetailTabs.length === 0) return;
+    setDetailTab((prev) =>
+      availableDetailTabs.some((t) => t.id === prev) ? prev : availableDetailTabs[0].id
+    );
+  }, [product?.id, availableDetailTabs]);
 
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
   const displayPrice = selectedVariant?.price ?? product?.price ?? "0.00";
@@ -74,6 +99,20 @@ export default function ProductDetailPage() {
         <section className="lg:pr-4">
           <div className="p-1 lg:p-0">
             <div className="relative overflow-hidden rounded-2xl bg-[#F7F3EB]">
+              {product.featured && (
+                <div
+                  className="absolute left-3 top-3 z-10 drop-shadow-md"
+                  title="Featured"
+                >
+                  <span className="sr-only">Featured product</span>
+                  <div
+                    className="flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-[#F2BA52] via-[#E8A838] to-[#C48912] shadow-lg ring-[3px] ring-white/90"
+                    aria-hidden
+                  >
+                    <Award className="h-8 w-8 text-white" strokeWidth={1.75} />
+                  </div>
+                </div>
+              )}
               {images[activeImage] ? (
                 <img
                   src={images[activeImage]}
@@ -115,16 +154,18 @@ export default function ProductDetailPage() {
 
         <section className="space-y-8 lg:pl-4">
           <div className="space-y-6">
-            {product.brand_details?.name && (
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#4C1C59]">
-                {product.brand_details.name}
-              </span>
-            )}
-            {selectedVariant && (
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#4C1C59]">
-                {getVariantLabel(selectedVariant)}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {product.brand_details?.name && (
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#4C1C59]">
+                  {product.brand_details.name}
+                </span>
+              )}
+              {selectedVariant && (
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#4C1C59]">
+                  {getVariantLabel(selectedVariant)}
+                </span>
+              )}
+            </div>
             <h1 className="mt-2 text-3xl font-semibold text-gray-900">{product.name}</h1>
             <div className="mt-4 flex items-center gap-2 text-sm text-gray-500">
               <div className="flex items-center gap-1">
@@ -213,15 +254,60 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex gap-6 border-b border-gray-100 pb-3 text-xs font-semibold uppercase tracking-wide text-[#4C1C59]">
-              <span>Benefits</span>
-              <span>Ingredients</span>
-              <span>How to use</span>
-            </div>
-            <div className="mt-4 text-sm text-gray-500">
-              Content will be populated from the backend.
-            </div>
+          <div className="border-t border-gray-100 pt-8">
+            {availableDetailTabs.length > 0 ? (
+              <div>
+                <div
+                  className="flex flex-wrap gap-8 border-b border-gray-200/80"
+                  role="tablist"
+                  aria-label="Product details"
+                >
+                  {availableDetailTabs.map((tab) => {
+                    const selected = detailTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        id={`product-detail-tab-${tab.id}`}
+                        aria-selected={selected}
+                        aria-controls={`product-detail-panel-${tab.id}`}
+                        tabIndex={selected ? 0 : -1}
+                        onClick={() => setDetailTab(tab.id)}
+                        className={`-mb-px border-b-2 bg-transparent px-0 pb-3 text-left text-xs font-semibold uppercase tracking-wide transition-colors ${
+                          selected
+                            ? "border-[#4C1C59] text-[#4C1C59]"
+                            : "border-transparent text-gray-500 hover:text-gray-800"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {availableDetailTabs.map((tab) => {
+                  const selected = detailTab === tab.id;
+                  if (!selected) return null;
+                  return (
+                    <div
+                      key={tab.id}
+                      role="tabpanel"
+                      id={`product-detail-panel-${tab.id}`}
+                      aria-labelledby={`product-detail-tab-${tab.id}`}
+                      className="mt-4"
+                    >
+                      <div className="prose prose-sm max-w-none text-gray-600">
+                        <ReactMarkdown>{tab.body}</ReactMarkdown>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                More product details will appear here when provided.
+              </p>
+            )}
           </div>
         </section>
       </div>
