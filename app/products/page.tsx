@@ -71,6 +71,19 @@ function ProductsPageContent() {
     }
   };
 
+  const clearAllFilters = () => {
+    setInStockOnly(false);
+    setMinPrice("");
+    setMaxPrice("");
+    updateQuery({
+      search: null,
+      brand: null,
+      category: null,
+      subcategory: null,
+      filters: null,
+    });
+  };
+
   const subcategoriesByCategory = useMemo(() => {
     const grouped = new Map<number, typeof subcategories>();
     (subcategories ?? []).forEach((subcategory) => {
@@ -209,7 +222,7 @@ function ProductsPageContent() {
   }, [filtersParam]);
 
   return (
-    <main className="container mx-auto px-4 py-16">
+    <main className="container mx-auto px-4 py-[-10px] md:py-10">
       <div className="flex flex-col gap-10 lg:flex-row">
         <aside className="w-full max-w-full lg:w-72">
           <div
@@ -431,7 +444,7 @@ function ProductsPageContent() {
           </div>
 
           {appliedFilterValues.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
+            <div className="mb-4 flex flex-wrap items-center gap-2 lg:hidden">
               {appliedFilterValues.map((value) => (
                 <span
                   key={value}
@@ -440,6 +453,13 @@ function ProductsPageContent() {
                   {value}
                 </span>
               ))}
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#ff597a]"
+              >
+                Clear all
+              </button>
             </div>
           )}
 

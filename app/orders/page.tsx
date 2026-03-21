@@ -9,7 +9,7 @@ import { useProductsQuery } from "@/lib/api/products";
 import { useToast } from "@/lib/state/toast-context";
 import { usePaymentsApi } from "@/lib/api/payments";
 
-type PaymentOption = "stk" | "intasend_link" | "stripe";
+type PaymentOption = "mpesa" | "card";
 
 const formatStatusLabel = (status: string) =>
   status
@@ -54,7 +54,7 @@ function OrdersPageContent() {
   >({});
   const [mpesaPhones, setMpesaPhones] = useState<Record<number, string>>({});
 
-  const getPaymentOption = (order: Order) => selectedPaymentOption[order.id] ?? "stripe";
+  const getPaymentOption = (order: Order) => selectedPaymentOption[order.id] ?? "card";
   const getMpesaPhone = (order: Order) => mpesaPhones[order.id] ?? "";
   const productImageById = useMemo(
     () =>
@@ -275,61 +275,53 @@ function OrdersPageContent() {
                     <h3 className="text-sm font-semibold text-gray-900">Make payment</h3>
                   </div>
 
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
                       onClick={() =>
                         setSelectedPaymentOption((prev) => ({
                           ...prev,
-                          [order.id]: "stk",
+                          [order.id]: "mpesa",
                         }))
                       }
-                      className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-                        getPaymentOption(order) === "stk"
-                          ? "border-[#4C1C59] bg-[#4C1C59] text-white"
-                          : "border-gray-200 bg-white text-[#4C1C59] hover:border-[#4C1C59]/40"
+                      className={`flex items-center justify-center rounded-lg border px-3 py-0 transition-colors ${
+                        getPaymentOption(order) === "mpesa"
+                          ? "border-[#4C1C59] bg-white ring-2 ring-[#4C1C59]/30"
+                          : "border-gray-200 bg-white hover:border-[#4C1C59]/40"
                       }`}
                     >
-                      STK Push
+                      <img
+                        src="/mpesa.png"
+                        alt="M-Pesa"
+                        className="h-10 w-auto max-w-[140px] object-contain"
+                      />
                     </button>
                     <button
                       type="button"
                       onClick={() =>
                         setSelectedPaymentOption((prev) => ({
                           ...prev,
-                          [order.id]: "intasend_link",
+                          [order.id]: "card",
                         }))
                       }
-                      className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-                        getPaymentOption(order) === "intasend_link"
-                          ? "border-[#4C1C59] bg-[#4C1C59] text-white"
-                          : "border-gray-200 bg-white text-[#4C1C59] hover:border-[#4C1C59]/40"
+                      className={`flex items-center justify-center rounded-lg border px-3 py-0 transition-colors ${
+                        getPaymentOption(order) === "card"
+                          ? "border-[#4C1C59] bg-white ring-2 ring-[#4C1C59]/30"
+                          : "border-gray-200 bg-white hover:border-[#4C1C59]/40"
                       }`}
                     >
-                      IntaSend Link
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedPaymentOption((prev) => ({
-                          ...prev,
-                          [order.id]: "stripe",
-                        }))
-                      }
-                      className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-                        getPaymentOption(order) === "stripe"
-                          ? "border-[#4C1C59] bg-[#4C1C59] text-white"
-                          : "border-gray-200 bg-white text-[#4C1C59] hover:border-[#4C1C59]/40"
-                      }`}
-                    >
-                      Stripe
+                      <img
+                        src="/visa_mastercard.png"
+                        alt="Visa and Mastercard"
+                        className="h-10 w-auto max-w-[160px] object-contain"
+                      />
                     </button>
                   </div>
 
-                  {getPaymentOption(order) === "stk" && (
+                  {getPaymentOption(order) === "mpesa" && (
                     <div className="mt-3">
                       <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                        Phone number
+                        M-Pesa phone number
                       </label>
                       <input
                         value={getMpesaPhone(order)}
@@ -353,21 +345,15 @@ function OrdersPageContent() {
                         setPayingOrderId(order.id);
                         const origin = window.location.origin;
                         const paymentOption = getPaymentOption(order);
-                        if (paymentOption === "stk" && !getMpesaPhone(order).trim()) {
-                          throw new Error("Enter a phone number for STK push.");
+                        if (paymentOption === "mpesa" && !getMpesaPhone(order).trim()) {
+                          throw new Error("Enter a phone number for M-Pesa.");
                         }
                         const payment = await createOrderPayment({
                           order: order.id,
-                          provider:
-                            paymentOption === "stripe" ? "stripe" : "intasend",
-                          method:
-                            paymentOption === "stk"
-                              ? "stk"
-                              : paymentOption === "intasend_link"
-                              ? "link"
-                              : "checkout",
+                          provider: paymentOption === "card" ? "stripe" : "intasend",
+                          method: paymentOption === "mpesa" ? "stk" : "checkout",
                           phone_number:
-                            paymentOption === "stk" ? getMpesaPhone(order) : undefined,
+                            paymentOption === "mpesa" ? getMpesaPhone(order) : undefined,
                           email: order.shipping_address?.email ?? auth?.user?.email ?? undefined,
                           success_url: `${origin}/orders?payment=success`,
                           cancel_url: `${origin}/orders?payment=failed`,
@@ -377,8 +363,8 @@ function OrdersPageContent() {
                           return;
                         }
                         showToast(
-                          paymentOption === "stk"
-                            ? "STK prompt sent to your phone."
+                          paymentOption === "mpesa"
+                            ? "M-Pesa prompt sent to your phone."
                             : "Payment initiated."
                         );
                       } catch (err) {
@@ -395,11 +381,9 @@ function OrdersPageContent() {
                   >
                     {payingOrderId === order.id
                       ? "Processing..."
-                      : getPaymentOption(order) === "stk"
-                      ? "Pay with STK Push"
-                      : getPaymentOption(order) === "intasend_link"
-                      ? "Pay with IntaSend Link"
-                      : "Pay with Stripe"}
+                      : getPaymentOption(order) === "mpesa"
+                      ? "Pay with M-Pesa"
+                      : "Pay with Card"}
                   </button>
                 </div>
               )}

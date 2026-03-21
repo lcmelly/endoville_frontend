@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -73,6 +73,7 @@ export default function CartPage() {
   const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card">("mpesa");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [shipping, setShipping] = useState<ShippingState>(initialShipping);
+  const orderSummaryRef = useRef<HTMLElement>(null);
 
   const productsById = useMemo(
     () => new Map((products ?? []).map((product) => [product.id, product])),
@@ -132,6 +133,25 @@ export default function CartPage() {
     setError("Please fill in all required shipping fields.");
     return false;
   };
+
+  useEffect(() => {
+    if (activeTab !== "payment") {
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      orderSummaryRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab]);
 
   if (items.length === 0) {
     return (
@@ -248,7 +268,10 @@ export default function CartPage() {
           </div>
         </section>
 
-        <aside className="w-full max-w-full lg:max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <aside
+          ref={orderSummaryRef}
+          className="w-full max-w-full lg:max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"
+        >
           <h2 className="text-lg font-semibold text-gray-900">Order summary</h2>
           <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
             <span>Subtotal</span>
@@ -424,28 +447,36 @@ export default function CartPage() {
                   <h3 className="text-sm font-semibold text-gray-900">Payment</h3>
                   {location === "Kenya" ? (
                     <div className="space-y-4">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
                         <button
                           type="button"
                           onClick={() => setPaymentMethod("mpesa")}
-                          className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                          className={`flex items-center justify-center rounded-lg border px-3 py-3 transition-colors ${
                             paymentMethod === "mpesa"
-                              ? "bg-[#4C1C59] text-white"
-                              : "border border-[#4C1C59]/20 text-[#4C1C59]"
+                              ? "border-[#4C1C59] bg-white ring-2 ring-[#4C1C59]/30"
+                              : "border-gray-200 bg-white hover:border-[#4C1C59]/40"
                           }`}
                         >
-                          Pay with M-Pesa
+                          <img
+                            src="/mpesa.png"
+                            alt="M-Pesa"
+                            className="h-8 w-auto max-w-[140px] object-contain"
+                          />
                         </button>
                         <button
                           type="button"
                           onClick={() => setPaymentMethod("card")}
-                          className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                          className={`flex items-center justify-center rounded-lg border px-3 py-3 transition-colors ${
                             paymentMethod === "card"
-                              ? "bg-[#4C1C59] text-white"
-                              : "border border-[#4C1C59]/20 text-[#4C1C59]"
+                              ? "border-[#4C1C59] bg-white ring-2 ring-[#4C1C59]/30"
+                              : "border-gray-200 bg-white hover:border-[#4C1C59]/40"
                           }`}
                         >
-                          Pay with Card
+                          <img
+                            src="/visa_mastercard.png"
+                            alt="Visa and Mastercard"
+                            className="h-8 w-auto max-w-[160px] object-contain"
+                          />
                         </button>
                       </div>
                       {paymentMethod === "mpesa" && (
@@ -463,8 +494,15 @@ export default function CartPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-600">
-                      Pay securely using your card.
+                    <div className="flex flex-col gap-3">
+                      <p className="text-sm text-gray-600">Pay securely using your card.</p>
+                      <div className="flex justify-center rounded-lg border border-gray-200 bg-white px-3 py-3">
+                        <img
+                          src="/visa_mastercard.png"
+                          alt="Visa and Mastercard"
+                          className="h-8 w-auto max-w-[160px] object-contain"
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -569,8 +607,8 @@ export default function CartPage() {
                       ? "Processing..."
                       : location === "Kenya"
                       ? paymentMethod === "mpesa"
-                        ? "Pay with M-Pesa"
-                        : "Pay with Card"
+                        ? "M-Pesa STK Push"
+                        : "Pay with Card/Paypal"
                       : "Pay with Card"}
                   </button>
                 </>

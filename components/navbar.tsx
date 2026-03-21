@@ -47,10 +47,7 @@ export default function Navbar() {
   const language = "EN"; // Placeholder: getLanguage()
   const mobileLocationLabel = location === "Kenya" ? "KE" : "US";
 
-  const navigationItems = [
-    { label: "Categories", href: "/categories" },
-    { label: "Endoville Living", href: "/endoville-living" },
-  ];
+  const navigationItems = [{ label: "Endoville Living", href: "/endoville-living" }];
 
   const locationOptions = ["USA", "Kenya"] as const;
   const { data: categories } = useCategoriesQuery();
@@ -447,14 +444,16 @@ export default function Navbar() {
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           </div>
-          <button
-            type="button"
-            onClick={handleOpenFilters}
-            className="h-11 me-7.5 w-11 rounded-2xl border border-gray-200 text-gray-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
-            aria-label="Open filters"
-          >
-            <SlidersHorizontal className="mx-auto h-5 w-5" />
-          </button>
+          {pathname !== "/" && (
+            <button
+              type="button"
+              onClick={handleOpenFilters}
+              className="h-11 me-7.5 w-11 rounded-2xl border border-gray-200 text-gray-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+              aria-label="Open filters"
+            >
+              <SlidersHorizontal className="mx-auto h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -486,6 +485,31 @@ export default function Navbar() {
                 </Link>
               );
             })}
+
+            <div className="pt-4 border-t space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Categories
+              </p>
+              <div className="flex flex-col gap-2">
+                {(categories ?? []).slice(0, 6).map((category) => (
+                  <Link
+                    key={category.id}
+                    href={`/products?category=${category.id}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-sm text-gray-700 transition-colors hover:text-[#4C1C59]"
+                  >
+                    {category.name}
+                  </Link>
+                ))}
+                <Link
+                  href="/products"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-sm font-semibold text-[#4C1C59]"
+                >
+                  Shop all
+                </Link>
+              </div>
+            </div>
 
             {/* Mobile Actions */}
             <div className="pt-4 border-t space-y-3">
