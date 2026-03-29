@@ -4,7 +4,11 @@ import Link from "next/link";
 import { CheckCircle, Phone, Star } from "lucide-react";
 import { useEndovilleBrandAssets } from "@/lib/brand-assets";
 
-export default function Hero() {
+type HeroProps = {
+  showImages?: boolean;
+};
+
+export default function Hero({ showImages = true }: HeroProps) {
   // Placeholder data - to be replaced with actual data later
   const rating = 4.8; // Placeholder: getAverageRating()
   const phoneNumber = "(123) 456-7890"; // Placeholder: getPhoneNumber()
@@ -13,7 +17,11 @@ export default function Hero() {
   return (
     <section className="relative bg-transparent pt-30 pb-20 md:py-55 lg:py-20 overflow-hidden">
       <div className="container mx-auto pl-2 pr-4 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center relative">
+        <div
+          className={`grid gap-8 items-center relative ${
+            showImages ? "lg:grid-cols-2 lg:gap-12" : "grid-cols-1"
+          }`}
+        >
           {/* Left Content */}
           <div className="text-left space-y-6 relative z-10 mt-[-10%]">
             {/* Subheading/Tagline */}
@@ -72,41 +80,43 @@ export default function Hero() {
           </div>
 
           {/* Right Side - Images */}
-          <div className="relative h-[500px] md:h-[600px] lg:h-[700px]">
-            {/* Image Container */}
-            <div className="relative z-10 h-full flex items-center justify-center">
-              {/* Placeholder for overlapping images */}
-              <div className="relative w-full h-full max-w-lg">
-                {/* Top Image (larger, behind) */}
-                <div className="absolute top-0 left-0 lg:w-[90%] w-[70%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-10 lg:ms-[-10%] xlg:ms-[-20%]">
-                  <img
-                    src={hero1Url}
-                    alt="Premium supplements"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
+          {showImages && (
+            <div className="relative h-[500px] md:h-[600px] lg:h-[700px]">
+              {/* Image Container */}
+              <div className="relative z-10 h-full flex items-center justify-center">
+                {/* Placeholder for overlapping images */}
+                <div className="relative w-full h-full max-w-lg">
+                  {/* Top Image (larger, behind) */}
+                  <div className="absolute top-0 left-0 lg:w-[90%] w-[70%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-10 lg:ms-[-10%] xlg:ms-[-20%]">
+                    <img
+                      src={hero1Url}
+                      alt="Premium supplements"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
 
-                {/* Bottom Image (smaller, overlapping, in front) */}
-                <div className="absolute xlg:bottom-2 bottom-[10%] xlg:right-[-20%] lg:right-[-20%] lg:w-[70%] right-[-1%] w-[50%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-20 ms-[-15%] bg-[#B1D989]">
-                  <img
-                    src={hero2Url}
-                    alt="Wellness products"
-                    style={{
-                      backgroundColor: "#B1D989",
-                    }}
-                    className="h-full w-full object-cover"
-                  />
+                  {/* Bottom Image (smaller, overlapping, in front) */}
+                  <div className="absolute xlg:bottom-2 bottom-[10%] xlg:right-[-20%] lg:right-[-20%] lg:w-[70%] right-[-1%] w-[50%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-20 ms-[-15%] bg-[#B1D989]">
+                    <img
+                      src={hero2Url}
+                      alt="Wellness products"
+                      style={{
+                        backgroundColor: "#B1D989",
+                      }}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="mt-[-10px] lg:mt-[-36px] text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+          <h2 className="text-xl mt-10 md:mt-0 md:text-3xl font-bold text-gray-900">
             Why Choose Endoville Health?
           </h2>
-          <ul className="relative mt-6 h-8 text-gray-700 max-w-3xl mx-auto">
+          <ul className="relative mt-10 h-12 text-xs sm:text-sm md:text-base text-gray-700 max-w-3xl mx-auto">
             <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "0s" }}>
               <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
               <span className="mt-6">
@@ -122,14 +132,14 @@ export default function Hero() {
               </span>
             </li>
             <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "12s" }}>
-              <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
+              <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#2a0f32]" />
               <span className="truncate">
                 <strong>Sustainably Sourced</strong> — We prioritize eco-friendly packaging
                 and ethically sourced ingredients.
               </span>
             </li>
             <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "18s" }}>
-              <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
+              <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#2a0f32]" />
               <span className="truncate">
                 <strong>Expert-Curated Selection</strong> — Our team of nutritionists and health
                 professionals handpick every product.

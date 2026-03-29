@@ -7,6 +7,25 @@ import EndovilleLivingPreview from "@/components/endoville-living-preview";
 import { getEndovilleBrandAssets } from "@/lib/brand-assets";
 import { useBrandsQuery } from "@/lib/api/products";
 
+type NetworkInformation = {
+  effectiveType?: string;
+  saveData?: boolean;
+  addEventListener?: (type: "change", listener: () => void) => void;
+  removeEventListener?: (type: "change", listener: () => void) => void;
+};
+
+const isSlowConnection = (connection?: NetworkInformation) => {
+  if (!connection) {
+    return false;
+  }
+
+  if (connection.saveData) {
+    return true;
+  }
+
+  return ["slow-2g", "2g", "3g"].includes(connection.effectiveType ?? "");
+};
+
 const preloadImage = (src: string) =>
   new Promise<void>((resolve) => {
     const image = new Image();
@@ -110,6 +129,22 @@ export default function HomePageShell() {
   const { data: brands, isLoading: brandsLoading } = useBrandsQuery();
   const { hero1Url, hero2Url } = useMemo(() => getEndovilleBrandAssets(brands), [brands]);
   const [isReady, setIsReady] = useState(false);
+  const [showHeroImages, setShowHeroImages] = useState(true);
+
+  useEffect(() => {
+    const connection = (navigator as Navigator & { connection?: NetworkInformation }).connection;
+
+    const updateConnectionState = () => {
+      setShowHeroImages(!isSlowConnection(connection));
+    };
+
+    updateConnectionState();
+    connection?.addEventListener?.("change", updateConnectionState);
+
+    return () => {
+      connection?.removeEventListener?.("change", updateConnectionState);
+    };
+  }, []);
 
   useEffect(() => {
     let isCancelled = false;
@@ -118,8 +153,12 @@ export default function HomePageShell() {
       return;
     }
 
-    setIsReady(false);
+    if (!showHeroImages) {
+      setIsReady(true);
+      return;
+    }
 
+    setIsReady(false);
     Promise.all([preloadImage(hero1Url), preloadImage(hero2Url)]).finally(() => {
       if (!isCancelled) {
         setIsReady(true);
@@ -129,7 +168,7 @@ export default function HomePageShell() {
     return () => {
       isCancelled = true;
     };
-  }, [brandsLoading, hero1Url, hero2Url]);
+  }, [brandsLoading, hero1Url, hero2Url, showHeroImages]);
 
   if (!isReady) {
     return <HomePageLoader />;
@@ -137,7 +176,7 @@ export default function HomePageShell() {
 
   return (
     <>
-      <Hero />
+      <Hero showImages={showHeroImages} />
       <FeaturedProducts />
       <EndovilleLivingPreview />
     </>
