@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, appFetch } from "@/lib/api/client";
 import { useAuth } from "@/lib/state/auth-context";
 
 // Registration payload for /api/users/register/
@@ -66,10 +66,7 @@ export type LoginUserPayload =
       password?: never;
     };
 
-// Login response for /api/users/login/
-export type LoginUserResponse = {
-  access: string;
-  refresh: string;
+export type AuthenticatedUser = {
   user: {
     id: number;
     email: string;
@@ -83,6 +80,10 @@ export type LoginUserResponse = {
     is_active: boolean;
     created_at: string;
   };
+};
+
+export type AuthSessionResponse = {
+  user: AuthenticatedUser["user"] | null;
 };
 
 // Google login payload for /api/users/google-login/
@@ -139,66 +140,68 @@ export const sendOtp = (payload: SendOtpPayload) =>
     body: JSON.stringify(payload),
   });
 
-// Login user and retrieve access/refresh tokens; no auth required.
+// Login user and establish a cookie-backed session.
 export const loginUser = (payload: LoginUserPayload) =>
-  apiFetch<LoginUserResponse>("/api/users/login/", {
+  appFetch<AuthenticatedUser>("/api/auth/login/", {
     method: "POST",
-    // No auth headers for login.
     body: JSON.stringify(payload),
   });
 
-// Login user with Google OAuth token; no auth required.
+// Login user with Google OAuth and establish a cookie-backed session.
 export const googleLogin = (payload: GoogleLoginPayload) =>
-  apiFetch<LoginUserResponse>("/api/users/google-login/", {
+  appFetch<AuthenticatedUser>("/api/auth/google-login/", {
     method: "POST",
-    // No auth headers for Google login.
     body: JSON.stringify(payload),
   });
 
-// Internal helper: fetch profile using a supplied access token.
-const getMeWithToken = (accessToken: string) =>
-  apiFetch<UserProfile>("/api/users/me/", {
+export const getSession = () =>
+  appFetch<AuthSessionResponse>("/api/auth/session/", {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
   });
 
-// Internal helper: update profile using a supplied access token.
-const updateMeWithToken = (accessToken: string, payload: UpdateUserProfilePayload) =>
-  apiFetch<UserProfile>("/api/users/me/", {
+export const logoutUser = () =>
+  appFetch<{ ok: true }>("/api/auth/logout/", {
+    method: "POST",
+  });
+
+// Internal helper: fetch profile using the server-side auth cookie.
+const getMe = () =>
+  appFetch<UserProfile>("/api/proxy/users/me/", {
+    method: "GET",
+  });
+
+// Internal helper: update profile using the server-side auth cookie.
+const updateMeRequest = (payload: UpdateUserProfilePayload) =>
+  appFetch<UserProfile>("/api/proxy/users/me/", {
     method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
     body: JSON.stringify(payload),
   });
 
-// Auth-aware profile APIs that pull the access token from global auth state.
+// Auth-aware profile APIs that use the server-side auth cookie.
 export const useUserApi = () => {
   const { auth } = useAuth();
-  const accessToken = auth?.access;
+  const isAuthenticated = Boolean(auth?.user);
 
   // Fetch the current user's profile.
-  const getMe = useCallback(async () => {
-    if (!accessToken) {
-      throw new Error("Missing access token.");
+  const getCurrentUser = useCallback(async () => {
+    if (!isAuthenticated) {
+      throw new Error("You must be signed in.");
     }
-    return getMeWithToken(accessToken);
-  }, [accessToken]);
+    return getMe();
+  }, [isAuthenticated]);
 
   // Update the current user's profile.
   const updateMe = useCallback(
     async (payload: UpdateUserProfilePayload) => {
-      if (!accessToken) {
-        throw new Error("Missing access token.");
+      if (!isAuthenticated) {
+        throw new Error("You must be signed in.");
       }
-      return updateMeWithToken(accessToken, payload);
+      return updateMeRequest(payload);
     },
-    [accessToken]
+    [isAuthenticated]
   );
 
-  return { getMe, updateMe };
+  return { getMe: getCurrentUser, updateMe };
 };
 
 // Public API surface for user endpoints.

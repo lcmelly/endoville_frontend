@@ -14,9 +14,9 @@ const genderOptions = [
 ];
 
 export default function AccountPage() {
-  const { auth } = useAuth();
+  const { auth, authLoading } = useAuth();
   const { getMe, updateMe } = useUserApi();
-  const accessToken = auth?.access ?? "";
+  const isAuthenticated = Boolean(auth?.user);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,6 +34,16 @@ export default function AccountPage() {
   const [deletingImage, setDeletingImage] = useState(false);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setLoading(false);
+      setProfile(null);
+      return;
+    }
+
     let isMounted = true;
     const loadProfile = async () => {
       setError(null);
@@ -65,9 +75,9 @@ export default function AccountPage() {
     return () => {
       isMounted = false;
     };
-  }, [getMe]);
+  }, [authLoading, getMe, isAuthenticated]);
 
-  const canEdit = Boolean(accessToken);
+  const canEdit = isAuthenticated;
 
   const hasChanges = useMemo(() => {
     if (!profile) {
@@ -190,7 +200,43 @@ export default function AccountPage() {
     return (
       <main className="container mx-auto px-4 pb-16 pt-10">
         <section className="rounded-2xl border border-[#4C1C59]/10 bg-white/80 p-6 shadow-sm backdrop-blur md:p-8">
-          <p className="text-sm text-gray-600">Loading account...</p>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-3">
+              <div className="h-8 w-40 animate-pulse rounded-lg bg-gray-200" />
+              <div className="h-4 w-64 animate-pulse rounded-lg bg-gray-100" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-44 animate-pulse rounded-lg bg-gray-100" />
+              <div className="h-4 w-32 animate-pulse rounded-lg bg-gray-100" />
+            </div>
+          </div>
+        </section>
+        <section className="mt-8 rounded-2xl border border-[#4C1C59]/10 bg-white/80 p-6 shadow-sm backdrop-blur">
+          <div className="flex flex-col gap-6 md:flex-row lg:flex-col">
+            <div className="flex w-full flex-col items-center gap-4 md:w-64 lg:w-full">
+              <div className="h-36 w-36 animate-pulse rounded-full bg-[#4C1C59]/10" />
+              <div className="h-3 w-40 animate-pulse rounded-lg bg-gray-100" />
+            </div>
+            <div className="grid flex-1 gap-4 md:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="h-3 w-24 animate-pulse rounded-lg bg-gray-100" />
+                  <div className="h-10 w-full animate-pulse rounded-md bg-gray-100" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-6 h-10 w-32 animate-pulse rounded-lg bg-[#4C1C59]/10" />
+        </section>
+      </main>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="container mx-auto px-4 pb-16 pt-10">
+        <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-sm text-gray-600">
+          <p>Please sign in to manage your account.</p>
         </section>
       </main>
     );

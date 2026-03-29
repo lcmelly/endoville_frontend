@@ -15,7 +15,14 @@ type ProductCardProps = {
 
 const formatPrice = (price: string, currencySymbol?: string) => {
   const symbol = currencySymbol ?? "";
-  return `${symbol}${price}`;
+  const numericPrice = Number(price);
+  const formattedPrice = Number.isFinite(numericPrice)
+    ? numericPrice.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : price;
+  return symbol ? `${symbol} ${formattedPrice}` : formattedPrice;
 };
 
 const getAverageRating = (rating: string | null) => {
@@ -85,7 +92,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="mt-auto flex items-center gap-2 pt-2">
             <div className="text-base sm:text-lg font-bold text-[#4C1C59]">
               {formatPrice(product.price, product.currency_symbol)}
             </div>

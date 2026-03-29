@@ -58,7 +58,7 @@ const requiredLabelClassName =
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clear } = useCart();
-  const { auth } = useAuth();
+  const { auth, authLoading } = useAuth();
   const { placeOrder, getOrders } = useOrdersApi();
   const { createOrderPayment } = usePaymentsApi();
   const { data: products } = useProductsQuery();
@@ -74,6 +74,7 @@ export default function CartPage() {
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [shipping, setShipping] = useState<ShippingState>(initialShipping);
   const orderSummaryRef = useRef<HTMLElement>(null);
+  const isAuthenticated = Boolean(auth?.user);
 
   const productsById = useMemo(
     () => new Map((products ?? []).map((product) => [product.id, product])),
@@ -279,7 +280,9 @@ export default function CartPage() {
               {totals.currencySymbol} {totals.subtotal.toFixed(2)}
             </span>
           </div>
-          {auth?.access ? (
+          {authLoading ? (
+            <div className="mt-6 text-sm text-gray-600">Checking your session...</div>
+          ) : isAuthenticated ? (
             <div className="mt-6 space-y-4">
               <div className="flex items-center gap-3 rounded-full border border-gray-200 p-1 text-xs font-semibold text-gray-500">
                 <button
@@ -619,7 +622,7 @@ export default function CartPage() {
               Please sign in or create an account to place an order.
             </div>
           )}
-          {!auth?.access && (
+          {!authLoading && !isAuthenticated && (
             <button
               type="button"
               onClick={() => router.push("/login")}

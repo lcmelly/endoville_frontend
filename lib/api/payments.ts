@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { appFetch } from "@/lib/api/client";
 import { useAuth } from "@/lib/state/auth-context";
 
 export type CreatePaymentPayload = {
@@ -26,29 +26,28 @@ export type Payment = {
   updated_at: string;
 };
 
-export const createPayment = (accessToken: string, payload: CreatePaymentPayload) =>
-  apiFetch<Payment>("/api/orders/payments/", {
+export const createPayment = (payload: CreatePaymentPayload) =>
+  appFetch<Payment>("/api/proxy/orders/payments/", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
     body: JSON.stringify(payload),
   });
 
 export const usePaymentsApi = () => {
   const { auth } = useAuth();
-  const accessToken = auth?.access;
+  const isAuthenticated = Boolean(auth?.user);
 
-  const requireAccessToken = () => {
-    if (!accessToken) {
-      throw new Error("Missing access token.");
+  const requireAuth = () => {
+    if (!isAuthenticated) {
+      throw new Error("You must be signed in.");
     }
-    return accessToken;
   };
 
   const createOrderPayment = useCallback(
-    async (payload: CreatePaymentPayload) => createPayment(requireAccessToken(), payload),
-    [accessToken]
+    async (payload: CreatePaymentPayload) => {
+      requireAuth();
+      return createPayment(payload);
+    },
+    [isAuthenticated]
   );
 
   return { createOrderPayment };

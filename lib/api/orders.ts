@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { appFetch } from "@/lib/api/client";
 import { useAuth } from "@/lib/state/auth-context";
 
 export type ShippingAddressPayload = {
@@ -103,50 +103,49 @@ export type OrderDetail = Order & {
   payments?: OrderPaymentRecord[];
 };
 
-export const listOrders = (accessToken: string) =>
-  apiFetch<Order[]>("/api/orders/orders/", {
+export const listOrders = () =>
+  appFetch<Order[]>("/api/proxy/orders/orders/", {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
   });
 
-export const getOrder = (accessToken: string, id: number) =>
-  apiFetch<OrderDetail>(`/api/orders/orders/${id}/`, {
+export const getOrder = (id: number) =>
+  appFetch<OrderDetail>(`/api/proxy/orders/orders/${id}/`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
   });
 
-export const createOrder = (accessToken: string, payload: OrderPayload) =>
-  apiFetch<Order>("/api/orders/orders/", {
+export const createOrder = (payload: OrderPayload) =>
+  appFetch<Order>("/api/proxy/orders/orders/", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
     body: JSON.stringify(payload),
   });
 
 export const useOrdersApi = () => {
   const { auth } = useAuth();
-  const accessToken = auth?.access;
+  const isAuthenticated = Boolean(auth?.user);
 
-  const requireAccessToken = () => {
-    if (!accessToken) {
-      throw new Error("Missing access token.");
+  const requireAuth = () => {
+    if (!isAuthenticated) {
+      throw new Error("You must be signed in.");
     }
-    return accessToken;
   };
 
-  const getOrders = useCallback(async () => listOrders(requireAccessToken()), [accessToken]);
+  const getOrders = useCallback(async () => {
+    requireAuth();
+    return listOrders();
+  }, [isAuthenticated]);
   const getOrderById = useCallback(
-    async (id: number) => getOrder(requireAccessToken(), id),
-    [accessToken]
+    async (id: number) => {
+      requireAuth();
+      return getOrder(id);
+    },
+    [isAuthenticated]
   );
   const placeOrder = useCallback(
-    async (payload: OrderPayload) => createOrder(requireAccessToken(), payload),
-    [accessToken]
+    async (payload: OrderPayload) => {
+      requireAuth();
+      return createOrder(payload);
+    },
+    [isAuthenticated]
   );
 
   return { getOrders, getOrderById, placeOrder };

@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/state/auth-context";
 import { Order, useOrdersApi } from "@/lib/api/orders";
-import { useProductsQuery } from "@/lib/api/products";
+import { useCurrenciesQuery, useProductsQuery } from "@/lib/api/products";
 import { useToast } from "@/lib/state/toast-context";
 import { OrderPaymentBlock } from "@/components/order-payment-block";
 import { useLocation } from "@/lib/state/location-context";
@@ -42,15 +42,17 @@ const getPaymentStatusTone = (isFullyPaid: boolean) =>
   isFullyPaid ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700";
 
 function OrdersPageContent() {
-  const { auth } = useAuth();
+  const { auth, authLoading } = useAuth();
   const { getOrders } = useOrdersApi();
   const { data: products } = useProductsQuery();
+  const { data: currencies } = useCurrenciesQuery();
   const { location } = useLocation();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isAuthenticated = Boolean(auth?.user);
   const productImageById = useMemo(
     () =>
       new Map(
@@ -76,7 +78,11 @@ function OrdersPageContent() {
   }, [searchParams, showToast]);
 
   useEffect(() => {
-    if (!auth?.access) {
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       setLoading(false);
       return;
     }
@@ -102,9 +108,13 @@ function OrdersPageContent() {
     return () => {
       isActive = false;
     };
-  }, [auth?.access, getOrders]);
+  }, [authLoading, getOrders, isAuthenticated]);
 
-  if (!auth?.access) {
+  if (authLoading) {
+    return <OrdersPageFallback />;
+  }
+
+  if (!isAuthenticated) {
     return (
       <main className="container mx-auto px-4 py-16">
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-sm text-gray-600">
@@ -145,8 +155,52 @@ function OrdersPageContent() {
           {Array.from({ length: 3 }).map((_, index) => (
             <div
               key={index}
-              className="h-24 animate-pulse rounded-2xl border border-gray-100 bg-white"
-            />
+              className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="h-4 w-28 animate-pulse rounded-lg bg-gray-200" />
+                  <div className="h-3 w-36 animate-pulse rounded-lg bg-gray-100" />
+                </div>
+                <div className="space-y-2">
+                  <div className="ml-auto h-4 w-20 animate-pulse rounded-lg bg-gray-200" />
+                  <div className="ml-auto h-3 w-24 animate-pulse rounded-lg bg-gray-100" />
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(220px,0.8fr)]">
+                <div className="space-y-3">
+                  {Array.from({ length: 2 }).map((_, itemIndex) => (
+                    <div
+                      key={itemIndex}
+                      className="flex items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="h-14 w-14 animate-pulse rounded-lg bg-gray-200" />
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 animate-pulse rounded-lg bg-gray-200" />
+                          <div className="h-3 w-24 animate-pulse rounded-lg bg-gray-100" />
+                        </div>
+                      </div>
+                      <div className="h-4 w-16 animate-pulse rounded-lg bg-gray-100" />
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-gray-100 bg-[#FAFAFA] p-4">
+                  <div className="h-3 w-24 animate-pulse rounded-lg bg-gray-100" />
+                  <div className="mt-3 h-7 w-28 animate-pulse rounded-full bg-gray-200" />
+                  <div className="mt-3 h-4 w-full animate-pulse rounded-lg bg-gray-100" />
+                </div>
+              </div>
+              <div className="mt-4 rounded-2xl border border-gray-100 bg-[#FAFAFA] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="h-7 w-32 animate-pulse rounded-full bg-gray-200" />
+                  <div className="flex gap-4">
+                    <div className="h-4 w-20 animate-pulse rounded-lg bg-gray-100" />
+                    <div className="h-4 w-24 animate-pulse rounded-lg bg-gray-100" />
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       ) : error ? (
@@ -178,7 +232,11 @@ function OrdersPageContent() {
                 </div>
                 <div className="flex flex-col items-end gap-1 text-right">
                   <div className="text-sm font-semibold text-[#4C1C59]">
-                    {formatOrderMoney(order.total, { location })}
+                    {formatOrderMoney(order.total, {
+                      location,
+                      currencies,
+                      sourceCurrencyCode: "USD",
+                    })}
                   </div>
                   <Link
                     href={`/orders/${order.id}`}
@@ -242,9 +300,8 @@ function OrdersPageContent() {
                           <span className="text-sm font-semibold text-[#4C1C59]">
                             {formatOrderMoney(item.line_total, {
                               location,
-                              symbolOverride: item.product
-                                ? productById.get(item.product)?.currency_symbol
-                                : undefined,
+                              currencies,
+                              sourceCurrencyCode: "USD",
                             })}
                           </span>
                         </>
@@ -316,13 +373,21 @@ function OrdersPageContent() {
                     <span>
                       Shipping:{" "}
                       <span className="font-medium text-gray-900">
-                        {formatOrderMoney(order.shipping_fee, { location })}
+                          {formatOrderMoney(order.shipping_fee, {
+                            location,
+                            currencies,
+                            sourceCurrencyCode: "USD",
+                          })}
                       </span>
                     </span>
                     <span>
                       Total:{" "}
                       <span className="font-semibold text-[#4C1C59]">
-                        {formatOrderMoney(order.total, { location })}
+                        {formatOrderMoney(order.total, {
+                          location,
+                          currencies,
+                          sourceCurrencyCode: "USD",
+                        })}
                       </span>
                     </span>
                   </div>

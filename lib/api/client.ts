@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Root of the backend REST API.
  * Keep this as the single source of truth for all endpoints.
@@ -14,6 +12,20 @@ export const buildApiUrl = (path: string) => {
   const trimmedBase = API_BASE_URL.replace(/\/+$/, "");
   const trimmedPath = path.replace(/^\/+/, "");
   return `${trimmedBase}/${trimmedPath}`;
+};
+
+const parseJsonResponse = async <T>(response: Response): Promise<T> => {
+  if (!response.ok) {
+    let errorData: unknown = null;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = null;
+    }
+    throw new ApiError(response.status, errorData);
+  }
+
+  return response.json() as Promise<T>;
 };
 
 /**
@@ -34,17 +46,23 @@ export const apiFetch = async <T>(
     },
   });
 
-  if (!response.ok) {
-    let errorData: unknown = null;
-    try {
-      errorData = await response.json();
-    } catch {
-      errorData = null;
-    }
-    throw new ApiError(response.status, errorData);
-  }
+  return parseJsonResponse<T>(response);
+};
 
-  return response.json() as Promise<T>;
+export const appFetch = async <T>(
+  path: string,
+  init?: RequestInit
+): Promise<T> => {
+  const response = await fetch(path, {
+    credentials: "same-origin",
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  return parseJsonResponse<T>(response);
 };
 
 export class ApiError extends Error {

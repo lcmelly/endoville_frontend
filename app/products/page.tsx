@@ -1,9 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
 import ProductCard from "@/components/product-card";
 import {
+  Brand,
   useBrandsQuery,
   useCategoriesQuery,
   useProductsQuery,
@@ -24,6 +26,185 @@ const getRatingValue = (rating: string | null) => {
 };
 
 type SortOption = "rating_desc" | "price_asc" | "price_desc" | "name_asc";
+
+const getBrandVisibleCountForWidth = (width: number) => {
+  if (width >= 1536) {
+    return 5;
+  }
+  if (width >= 1280) {
+    return 4;
+  }
+  return 3;
+};
+
+function BrandCarousel({
+  brands,
+  activeBrandId,
+  onSelectBrand,
+}: {
+  brands: Brand[];
+  activeBrandId: number | null;
+  onSelectBrand: (brandId: string | null) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(() =>
+    typeof window === "undefined" ? 4 : getBrandVisibleCountForWidth(window.innerWidth)
+  );
+  const [cardWidth, setCardWidth] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(true);
+  const gapPx = 16;
+
+  const visibleBrands = useMemo(
+    () => brands.filter((brand) => (brand.image_urls?.[0] ?? "").trim().length > 0),
+    [brands]
+  );
+
+  const extendedBrands = useMemo(() => {
+    if (visibleBrands.length === 0) {
+      return [];
+    }
+    return [...visibleBrands, ...visibleBrands];
+  }, [visibleBrands]);
+
+  const shouldUseCarousel = visibleBrands.length > visibleCount;
+  const hasMeasuredCarousel = !shouldUseCarousel || cardWidth > 0;
+
+  useEffect(() => {
+    const updateVisibleCount = () => {
+      setVisibleCount(getBrandVisibleCountForWidth(window.innerWidth));
+    };
+
+    updateVisibleCount();
+    window.addEventListener("resize", updateVisibleCount);
+    return () => window.removeEventListener("resize", updateVisibleCount);
+  }, []);
+
+  useEffect(() => {
+    if (!trackRef.current) {
+      return;
+    }
+
+    const updateCardWidth = () => {
+      if (!trackRef.current) {
+        return;
+      }
+
+      const containerWidth = trackRef.current.clientWidth;
+      const nextCardWidth = (containerWidth - gapPx * (visibleCount - 1)) / visibleCount;
+      setCardWidth(nextCardWidth);
+    };
+
+    updateCardWidth();
+    const observer = new ResizeObserver(updateCardWidth);
+    observer.observe(trackRef.current);
+
+    return () => observer.disconnect();
+  }, [visibleCount, visibleBrands.length]);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [visibleBrands.length, visibleCount]);
+
+  useEffect(() => {
+    if (!shouldUseCarousel || cardWidth <= 0) {
+      return;
+    }
+
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+    }
+
+    timerRef.current = window.setInterval(() => {
+      setIsAnimating(true);
+      setCurrentIndex((prev) => prev + 1);
+    }, 3500);
+
+    return () => {
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current);
+      }
+    };
+  }, [cardWidth, shouldUseCarousel]);
+
+  useEffect(() => {
+    if (!shouldUseCarousel) {
+      return;
+    }
+
+    if (currentIndex >= visibleBrands.length) {
+      const timeout = window.setTimeout(() => {
+        setIsAnimating(false);
+        setCurrentIndex(0);
+      }, 300);
+
+      return () => window.clearTimeout(timeout);
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      setIsAnimating(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [currentIndex, shouldUseCarousel, visibleBrands.length]);
+
+  if (visibleBrands.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="hidden lg:block">
+      <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+        Brands
+      </label>
+      <div className="mt-3 overflow-hidden" ref={trackRef}>
+        {hasMeasuredCarousel ? (
+          <div
+            className={`flex gap-4 ${isAnimating ? "transition-transform duration-300 ease-out" : ""}`}
+            style={{
+              transform: `translateX(-${currentIndex * (cardWidth + gapPx)}px)`,
+            }}
+          >
+            {(shouldUseCarousel ? extendedBrands : visibleBrands).map((brand, index) => {
+              const imageUrl = brand.image_urls?.[0];
+              const isActive = activeBrandId === brand.id;
+
+              return (
+                <button
+                  key={`${brand.id}-${index}`}
+                  type="button"
+                  onClick={() => onSelectBrand(isActive ? null : String(brand.id))}
+                  className={`flex h-24 flex-none items-center justify-center overflow-hidden rounded-2xl border bg-white px-4 py-3 transition-colors ${
+                    isActive
+                      ? "border-[#4C1C59] ring-2 ring-[#4C1C59]/15"
+                      : "border-gray-200 hover:border-[#4C1C59]/40"
+                  }`}
+                  style={{
+                    width: cardWidth ? `${cardWidth}px` : undefined,
+                  }}
+                  aria-label={`Filter by ${brand.name}`}
+                  title={brand.name}
+                >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={brand.name}
+                      className="h-full w-full object-contain"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-sm font-semibold text-gray-500">{brand.name}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function ProductsPageContent() {
   const router = useRouter();
@@ -374,12 +555,12 @@ function ProductsPageContent() {
               </label>
             </div>
 
-            <div className="mt-6 border-t border-gray-100 pt-5 lg:hidden">
+            <div className="mt-2 border-t border-gray-100 pt-0 lg:hidden">
               <label className="text-sm font-semibold text-gray-900">Sort by :</label>
               <select
                 value={sort}
                 onChange={(event) => setSort(event.target.value as SortOption)}
-                className="mt-3 h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm focus:border-[#4C1C59] focus:outline-none"
+                className="mt-1 h-8 w-full rounded-2xl border border-gray-200 px-2 text-sm focus:border-[#4C1C59] focus:outline-none"
               >
                 <option value="rating_desc">Top rated</option>
                 <option value="price_asc">Price: low to high</option>
@@ -393,52 +574,37 @@ function ProductsPageContent() {
         <section className="flex-1">
           <div className="mb-6 hidden flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm lg:flex lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-1 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="w-full max-w-full flex-1 hidden lg:block">
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  Brands
-                </label>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateQuery({ brand: null })}
-                    className={`font-heading rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
-                      !brandId
-                        ? "border-[#4C1C59] bg-[#F4ECFF] text-[#4C1C59]"
-                        : "border-gray-200 text-gray-700 hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
-                    }`}
-                  >
-                    All brands
-                  </button>
-                  {(brands ?? []).map((brand) => (
-                    <button
-                      key={brand.id}
-                      type="button"
-                      onClick={() => updateQuery({ brand: String(brand.id) })}
-                      className={`font-heading rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
-                        brandId === brand.id
-                          ? "border-[#4C1C59] bg-[#F4ECFF] text-[#4C1C59]"
-                          : "border-gray-200 text-gray-700 hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
-                      }`}
-                    >
-                      {brand.name}
-                    </button>
-                  ))}
-                </div>
+              <div className="w-full max-w-full flex-1">
+                <BrandCarousel
+                  brands={brands ?? []}
+                  activeBrandId={brandId}
+                  onSelectBrand={(nextBrandId) => updateQuery({ brand: nextBrandId })}
+                />
               </div>
-              <div className="hidden lg:block">
-                <label className="text-xs me-5 font-semibold uppercase tracking-wide text-gray-400">
-                  Sort by :
-                </label>
-                <select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value as SortOption)}
-                  className="mt-2 h-11 rounded-2xl border border-gray-200 px-3 text-sm focus:border-[#4C1C59] focus:outline-none"
+              <div className="hidden lg:flex flex-col items-end gap-3">
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#ff597a] flex items-center gap-2"
                 >
-                  <option value="rating_desc">Top rated</option>
-                  <option value="price_asc">Price: low to high</option>
-                  <option value="price_desc">Price: high to low</option>
-                  <option value="name_asc">Name: A-Z</option>
-                </select>
+                  <X className="w-4 h-4" />
+                  <span>Clear all Filters</span>
+                </button>
+                <div className="flex flex-col items-end">
+                  <label className="text-xs me-5 mb-2 font-semibold uppercase tracking-wide text-gray-600">
+                    Sort by :
+                  </label>
+                  <select
+                    value={sort}
+                    onChange={(event) => setSort(event.target.value as SortOption)}
+                    className="mt-0 py-0 h-8 rounded-2xl border border-gray-200 px-3 text-sm focus:border-[#4C1C59] focus:outline-none"
+                  >
+                    <option value="rating_desc">Top rated</option>
+                    <option value="price_asc">Price: low to high</option>
+                    <option value="price_desc">Price: high to low</option>
+                    <option value="name_asc">Name: A-Z</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -458,7 +624,7 @@ function ProductsPageContent() {
                 onClick={clearAllFilters}
                 className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#ff597a]"
               >
-                Clear all
+                Clear all Filters
               </button>
             </div>
           )}

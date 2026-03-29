@@ -1,53 +1,70 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { apiFetch, ApiError } from "@/lib/api/client";
-import type { LoginUserResponse } from "@/lib/api/users";
+import { ApiError } from "@/lib/api/client";
+import { getSession, logoutUser } from "@/lib/api/users";
+import type { AuthenticatedUser } from "@/lib/api/users";
 
-type AuthState = LoginUserResponse | null;
+type AuthState = AuthenticatedUser | null;
 
 type AuthContextValue = {
   auth: AuthState;
-  setAuth: (data: LoginUserResponse) => void;
-  clearAuth: () => void;
+  authLoading: boolean;
+  setAuth: (data: AuthenticatedUser) => void;
+  clearAuth: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-// Local storage key for persisting the login response.
-const STORAGE_KEY = "endoville.auth";
 const SESSION_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuthState] = useState<AuthState>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  // Hydrate auth state from localStorage on first client render.
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setAuthState(JSON.parse(stored) as LoginUserResponse);
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-      }
+  const setAuth = useCallback((data: AuthenticatedUser) => {
+    setAuthState(data);
+    setAuthLoading(false);
+  }, []);
+
+  const clearAuth = useCallback(async () => {
+    setAuthState(null);
+    setAuthLoading(false);
+    try {
+      await logoutUser();
+    } catch {
+      // Ignore logout transport failures after clearing local state.
     }
   }, []);
 
-  // Store auth state in memory and persist to localStorage.
-  const setAuth = useCallback((data: LoginUserResponse) => {
-    setAuthState(data);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, []);
-
-  // Clear auth state in memory and localStorage.
-  const clearAuth = useCallback(() => {
-    setAuthState(null);
-    localStorage.removeItem(STORAGE_KEY);
-  }, []);
-
-  // Periodically validate the access token and clear auth if it expires.
   useEffect(() => {
-    if (!auth?.access) {
+    let isCancelled = false;
+
+    const hydrateSession = async () => {
+      try {
+        const session = await getSession();
+        if (!isCancelled) {
+          setAuthState(session.user ? { user: session.user } : null);
+        }
+      } catch {
+        if (!isCancelled) {
+          setAuthState(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setAuthLoading(false);
+        }
+      }
+    };
+
+    hydrateSession();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // Periodically validate the cookie-backed session and clear auth if it expires.
+  useEffect(() => {
+    if (!auth?.user) {
       return;
     }
 
@@ -55,15 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const checkSession = async () => {
       try {
-        await apiFetch("/api/users/me/", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${auth.access}`,
-          },
-        });
+        const session = await getSession();
+        if (!session.user && !isCancelled) {
+          await clearAuth();
+        }
       } catch (error) {
         if (!isCancelled && error instanceof ApiError && error.status === 401) {
-          clearAuth();
+          await clearAuth();
         }
       }
     };
@@ -75,11 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isCancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [auth?.access, clearAuth]);
+  }, [auth?.user, clearAuth]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ auth, setAuth, clearAuth }),
-    [auth, setAuth, clearAuth]
+    () => ({ auth, authLoading, setAuth, clearAuth }),
+    [auth, authLoading, setAuth, clearAuth]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

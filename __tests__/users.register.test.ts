@@ -189,8 +189,6 @@ describe("loginUser", () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        access: "access-token",
-        refresh: "refresh-token",
         user: {
           id: 1,
           email: "cheruiyotfabian@gmail.com",
@@ -214,9 +212,10 @@ describe("loginUser", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://source.endovillehealth.com/api/users/login/");
+    expect(url).toBe("/api/auth/login/");
     expect(init).toMatchObject({
       method: "POST",
+      credentials: "same-origin",
     });
     expect(init.headers).toMatchObject({
       "Content-Type": "application/json",

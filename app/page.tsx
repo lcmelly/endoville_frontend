@@ -1,13 +1,5 @@
-import Hero from "@/components/hero";
-import FeaturedProducts from "@/components/featured-products";
-import EndovilleLivingPreview from "@/components/endoville-living-preview";
+import HomePageShell from "@/components/home-page-shell";
 
 export default function Home() {
-  return (
-    <>
-      <Hero />
-      <FeaturedProducts />
-      <EndovilleLivingPreview />
-    </>
-  );
+  return <HomePageShell />;
 }

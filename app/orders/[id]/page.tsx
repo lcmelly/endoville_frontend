@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/state/auth-context";
 import { OrderDetail, useOrdersApi } from "@/lib/api/orders";
-import { useProductsQuery } from "@/lib/api/products";
+import { useCurrenciesQuery, useProductsQuery } from "@/lib/api/products";
 import { useToast } from "@/lib/state/toast-context";
 import { OrderPaymentBlock } from "@/components/order-payment-block";
 import { useLocation } from "@/lib/state/location-context";
@@ -45,14 +45,16 @@ function OrderDetailContent() {
   const params = useParams<{ id: string }>();
   const orderId = Number(params.id);
   const searchParams = useSearchParams();
-  const { auth } = useAuth();
+  const { auth, authLoading } = useAuth();
   const { getOrderById } = useOrdersApi();
   const { data: products } = useProductsQuery();
+  const { data: currencies } = useCurrenciesQuery();
   const { location } = useLocation();
   const { showToast } = useToast();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isAuthenticated = Boolean(auth?.user);
 
   const productImageById = useMemo(
     () =>
@@ -77,7 +79,11 @@ function OrderDetailContent() {
   }, [searchParams, showToast]);
 
   useEffect(() => {
-    if (!auth?.access || !Number.isFinite(orderId)) {
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAuthenticated || !Number.isFinite(orderId)) {
       setLoading(false);
       return;
     }
@@ -100,9 +106,13 @@ function OrderDetailContent() {
     return () => {
       active = false;
     };
-  }, [auth?.access, getOrderById, orderId]);
+  }, [authLoading, getOrderById, isAuthenticated, orderId]);
 
-  if (!auth?.access) {
+  if (authLoading) {
+    return <OrderDetailFallback />;
+  }
+
+  if (!isAuthenticated) {
     return (
       <main className="container mx-auto px-4 py-16">
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-sm text-gray-600">
@@ -123,7 +133,59 @@ function OrderDetailContent() {
   if (loading) {
     return (
       <main className="container mx-auto px-4 py-16">
-        <div className="h-96 animate-pulse rounded-2xl border border-gray-100 bg-white" />
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <div className="h-4 w-28 animate-pulse rounded-lg bg-gray-100" />
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-8 w-40 animate-pulse rounded-lg bg-gray-200" />
+                <div className="h-4 w-52 animate-pulse rounded-lg bg-gray-100" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-7 w-24 animate-pulse rounded-full bg-gray-200" />
+                <div className="h-7 w-28 animate-pulse rounded-full bg-gray-200" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="h-3 w-16 animate-pulse rounded-lg bg-gray-100" />
+            <div className="mt-4 space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+                >
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <div className="h-16 w-16 animate-pulse rounded-lg bg-gray-200" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-36 animate-pulse rounded-lg bg-gray-200" />
+                      <div className="h-3 w-28 animate-pulse rounded-lg bg-gray-100" />
+                      <div className="h-3 w-20 animate-pulse rounded-lg bg-gray-100" />
+                    </div>
+                  </div>
+                  <div className="h-4 w-16 animate-pulse rounded-lg bg-gray-100" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="h-3 w-28 animate-pulse rounded-lg bg-gray-100" />
+              <div className="mt-4 space-y-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-4 w-full animate-pulse rounded-lg bg-gray-100" />
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="h-3 w-20 animate-pulse rounded-lg bg-gray-100" />
+              <div className="mt-4 space-y-3">
+                <div className="h-10 w-full animate-pulse rounded-xl bg-gray-100" />
+                <div className="h-10 w-full animate-pulse rounded-xl bg-gray-100" />
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     );
   }
@@ -241,7 +303,8 @@ function OrderDetailContent() {
                         Qty {item.quantity} ×{" "}
                         {formatOrderMoney(item.unit_price, {
                           location,
-                          symbolOverride: itemSymbol,
+                          currencies,
+                          sourceCurrencyCode: "USD",
                         })}
                         {item.barcode ? ` • ${item.barcode}` : ""}
                       </p>
@@ -250,7 +313,8 @@ function OrderDetailContent() {
                   <span className="text-sm font-semibold text-[#4C1C59]">
                     {formatOrderMoney(item.line_total, {
                       location,
-                      symbolOverride: itemSymbol,
+                      currencies,
+                      sourceCurrencyCode: "USD",
                     })}
                   </span>
                 </>
@@ -276,19 +340,31 @@ function OrderDetailContent() {
             <div className="flex justify-between text-gray-600">
               <span>Subtotal</span>
               <span className="font-medium text-gray-900">
-                {formatOrderMoney(order.subtotal, { location })}
+                {formatOrderMoney(order.subtotal, {
+                  location,
+                  currencies,
+                  sourceCurrencyCode: "USD",
+                })}
               </span>
             </div>
             <div className="mt-2 flex justify-between text-gray-600">
               <span>Shipping</span>
               <span className="font-medium text-gray-900">
-                {formatOrderMoney(order.shipping_fee, { location })}
+                {formatOrderMoney(order.shipping_fee, {
+                  location,
+                  currencies,
+                  sourceCurrencyCode: "USD",
+                })}
               </span>
             </div>
             <div className="mt-3 flex justify-between border-t border-gray-100 pt-3 text-base font-semibold">
               <span className="text-gray-900">Total</span>
               <span className="text-[#4C1C59]">
-                {formatOrderMoney(order.total, { location })}
+                {formatOrderMoney(order.total, {
+                  location,
+                  currencies,
+                  sourceCurrencyCode: "USD",
+                })}
               </span>
             </div>
           </div>

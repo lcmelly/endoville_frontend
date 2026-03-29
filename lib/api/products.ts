@@ -98,6 +98,18 @@ export type Subcategory = {
   category: number;
 };
 
+export type Currency = {
+  id: number;
+  code: string;
+  name: string;
+  symbol: string;
+  usd_rate: string;
+  is_primary: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ProductsQueryParams = {
   currency?: string;
 };
@@ -133,6 +145,8 @@ export const fetchBrands = () => apiFetch<Brand[]>("/api/products/brands/");
 
 export const fetchSubcategories = () =>
   apiFetch<Subcategory[]>("/api/products/subcategories/");
+
+export const fetchCurrencies = () => apiFetch<Currency[]>("/api/products/currencies/");
 
 export const useProductsQuery = (params?: ProductsQueryParams) => {
   const { location } = useLocation();
@@ -175,14 +189,23 @@ export const useSubcategoriesQuery = () =>
     queryFn: fetchSubcategories,
   });
 
+export const useCurrenciesQuery = () =>
+  useQuery({
+    queryKey: ["currencies"],
+    queryFn: fetchCurrencies,
+    staleTime: 5 * 60_000,
+  });
+
 export const productApi = {
   fetchCategories,
   fetchBrands,
+  fetchCurrencies,
   fetchProductById,
   fetchProducts,
   fetchSubcategories,
   useBrandsQuery,
   useCategoriesQuery,
+  useCurrenciesQuery,
   useProductByIdQuery,
   useProductsQuery,
   useSubcategoriesQuery,

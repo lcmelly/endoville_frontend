@@ -35,7 +35,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { auth, clearAuth } = useAuth();
+  const { auth, authLoading, clearAuth } = useAuth();
   const { itemCount } = useCart();
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
@@ -102,8 +102,8 @@ export default function Navbar() {
     setLocationMenuOpen(false);
   };
 
-  const handleLogout = () => {
-    clearAuth();
+  const handleLogout = async () => {
+    await clearAuth();
     setAccountMenuOpen(false);
     setMobileMenuOpen(false);
     router.push("/");
@@ -315,6 +315,11 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
+            ) : authLoading ? (
+              <div className="flex flex-col items-center gap-1 p-2 text-xs text-gray-500">
+                <User className="h-6 w-6 text-[#361340]" />
+                <span>Account</span>
+              </div>
             ) : (
               <Link
                 href="/login"
@@ -521,7 +526,7 @@ export default function Navbar() {
                 >
                   <User className="h-5 w-5 text-[#361340]" />
                   <span className="text-sm font-medium text-gray-700">
-                    {isLoggedIn ? `Hi, ${displayName}` : "Sign In"}
+                    {isLoggedIn ? `Hi, ${displayName}` : authLoading ? "Account" : "Sign In"}
                   </span>
                 </Link>
               </div>
