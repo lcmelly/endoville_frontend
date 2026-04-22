@@ -12,6 +12,9 @@ const allowedRoutePatterns = [
   { pattern: /^\/api\/orders\/orders\/$/, methods: ["GET", "POST"] },
   { pattern: /^\/api\/orders\/orders\/\d+\/$/, methods: ["GET"] },
   { pattern: /^\/api\/orders\/payments\/$/, methods: ["POST"] },
+  { pattern: /^\/api\/orders\/cart\/me\/$/, methods: ["GET"] },
+  { pattern: /^\/api\/orders\/cart\/sync\/$/, methods: ["PUT", "POST"] },
+  { pattern: /^\/api\/orders\/cart\/clear\/$/, methods: ["DELETE"] },
 ];
 
 const resolveBackendPath = (segments: string[]) => {
@@ -38,7 +41,9 @@ async function handleRequest(request: NextRequest, segments: string[]) {
   }
 
   const body =
-    request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
+    request.method === "GET" || request.method === "HEAD" || request.method === "DELETE"
+      ? undefined
+      : await request.text();
   const response = await proxyToBackend({
     path: backendPath,
     method: request.method,
@@ -76,6 +81,22 @@ export async function POST(
 }
 
 export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> }
+) {
+  const { path } = await context.params;
+  return handleRequest(request, path);
+}
+
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> }
+) {
+  const { path } = await context.params;
+  return handleRequest(request, path);
+}
+
+export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> }
 ) {

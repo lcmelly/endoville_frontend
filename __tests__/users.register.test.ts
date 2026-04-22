@@ -1,4 +1,10 @@
-import { activateUser, loginUser, registerUser, sendOtp } from "@/lib/api/users";
+import {
+  activateUser,
+  loginUser,
+  registerUser,
+  requestLoginOtp,
+  sendOtp,
+} from "@/lib/api/users";
 
 describe("registerUser", () => {
   const fetchMock = jest.fn();
@@ -170,6 +176,57 @@ describe("sendOtp", () => {
 
     await expect(
       sendOtp({
+        email: "user@example.com",
+      })
+    ).rejects.toThrow("API request failed: 400");
+  });
+});
+
+describe("requestLoginOtp", () => {
+  const fetchMock = jest.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    // @ts-expect-error - tests override global fetch
+    global.fetch = fetchMock;
+  });
+
+  it("posts to the request-login-otp endpoint without auth headers", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        message: "OTP has been sent to your email address.",
+        email: "user@example.com",
+      }),
+    });
+
+    await requestLoginOtp({
+      email: "user@example.com",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://source.endovillehealth.com/api/users/request-login-otp/");
+    expect(init).toMatchObject({
+      method: "POST",
+    });
+    expect(init.headers).toMatchObject({
+      "Content-Type": "application/json",
+    });
+    expect(init.headers?.Authorization).toBeUndefined();
+  });
+
+  it("throws on 400 for request-login-otp error cases", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        email: ["Unknown email, inactive account, or validation errors."],
+      }),
+    });
+
+    await expect(
+      requestLoginOtp({
         email: "user@example.com",
       })
     ).rejects.toThrow("API request failed: 400");

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { LoaderCircle, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/state/cart-context";
+import { cartItemsToSyncPayload } from "@/lib/cart/sync-utils";
 import { useOrdersApi } from "@/lib/api/orders";
 import { usePaymentsApi } from "@/lib/api/payments";
 import { useProductsQuery } from "@/lib/api/products";
@@ -85,7 +86,11 @@ export default function CartPage() {
     () =>
       items.map((item) => {
         const displayProduct = productsById.get(item.product.id) ?? item.product;
-        const unitPrice = parsePrice(displayProduct.price);
+        const variant =
+          item.variantId != null
+            ? displayProduct.variants?.find((v) => v.id === item.variantId)
+            : undefined;
+        const unitPrice = parsePrice(variant?.price ?? displayProduct.price);
 
         return {
           item,
@@ -203,12 +208,12 @@ export default function CartPage() {
           <div className="space-y-4">
             {pricedItems.map(({ item, lineTotal }) => (
               <div
-                key={item.product.id}
+                key={`${item.product.id}-${item.variantId ?? "base"}`}
                 className="relative grid grid-cols-[auto,1fr] gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm md:flex md:flex-row md:items-center md:gap-6"
               >
                 <button
                   type="button"
-                  onClick={() => removeItem(item.product.id)}
+                  onClick={() => removeItem(item.product.id, item.variantId ?? null)}
                   className="absolute right-3 top-3 rounded-full p-1 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
                   aria-label="Remove item"
                 >
@@ -242,7 +247,11 @@ export default function CartPage() {
                     type="button"
                     className="h-8 w-8 rounded-full border border-gray-200 text-sm"
                     onClick={() =>
-                      updateQuantity(item.product.id, Math.max(1, item.quantity - 1))
+                      updateQuantity(
+                        item.product.id,
+                        Math.max(1, item.quantity - 1),
+                        item.variantId ?? null
+                      )
                     }
                   >
                     -
@@ -253,7 +262,9 @@ export default function CartPage() {
                   <button
                     type="button"
                     className="h-8 w-8 rounded-full border border-gray-200 text-sm"
-                    onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                    onClick={() =>
+                      updateQuantity(item.product.id, item.quantity + 1, item.variantId ?? null)
+                    }
                   >
                     +
                   </button>
@@ -524,21 +535,24 @@ export default function CartPage() {
                         setSubmitting(true);
                         const orderPayload = {
                           shipping_address: shipping,
-                          items: items.map((item) => ({
-                            product: item.product.id,
-                            quantity: item.quantity,
-                          })),
+                          items: cartItemsToSyncPayload(items),
                           shipping_fee: "0.00",
                           notes: "",
                         };
                         const existingOrders = await getOrders();
-                        const cartSignature = items
-                          .map((item) => ({
-                            product: item.product.id,
-                            variant: null,
-                            quantity: item.quantity,
+                        const lineSortKey = (product: number | null, variant: number | null) =>
+                          variant != null ? `v:${variant}` : `p:${product ?? 0}`;
+                        const cartSignature = cartItemsToSyncPayload(items)
+                          .map((row) => ({
+                            product: row.product ?? null,
+                            variant: row.variant ?? null,
+                            quantity: row.quantity,
                           }))
-                          .sort((a, b) => a.product - b.product);
+                          .sort((a, b) =>
+                            lineSortKey(a.product, a.variant).localeCompare(
+                              lineSortKey(b.product, b.variant)
+                            )
+                          );
                         const matchingOrder = existingOrders.find((order) => {
                           if (order.is_fully_paid) {
                             return false;
@@ -548,11 +562,15 @@ export default function CartPage() {
                           }
                           const orderSignature = order.items
                             .map((item) => ({
-                              product: item.product ?? 0,
+                              product: item.product ?? null,
                               variant: item.variant ?? null,
                               quantity: item.quantity,
                             }))
-                            .sort((a, b) => a.product - b.product);
+                            .sort((a, b) =>
+                              lineSortKey(a.product, a.variant).localeCompare(
+                                lineSortKey(b.product, b.variant)
+                              )
+                            );
                           return orderSignature.every((item, index) => {
                             const cartItem = cartSignature[index];
                             return (

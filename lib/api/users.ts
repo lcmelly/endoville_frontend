@@ -43,7 +43,7 @@ export type ActivateUserResponse = {
   };
 };
 
-// OTP request payload for /api/users/send-otp/
+// OTP request payload for /api/users/send-otp/ (account activation resend).
 export type SendOtpPayload = {
   email: string;
 };
@@ -51,6 +51,16 @@ export type SendOtpPayload = {
 // OTP request response for /api/users/send-otp/
 export type SendOtpResponse = {
   message: string;
+};
+
+// Login OTP request for /api/users/request-login-otp/ (active accounts only).
+export type RequestLoginOtpPayload = {
+  email: string;
+};
+
+export type RequestLoginOtpResponse = {
+  message: string;
+  email: string;
 };
 
 // Login payload for /api/users/login/ (either password or OTP, not both)
@@ -132,11 +142,17 @@ export const activateUser = (payload: ActivateUserPayload) =>
     body: JSON.stringify(payload),
   });
 
-// Request a login OTP; no auth required.
+// Request an activation OTP (e.g. resend during signup); no auth required.
 export const sendOtp = (payload: SendOtpPayload) =>
   apiFetch<SendOtpResponse>("/api/users/send-otp/", {
     method: "POST",
-    // No auth headers for sending OTP.
+    body: JSON.stringify(payload),
+  });
+
+// Request a login OTP for code login; no auth required.
+export const requestLoginOtp = (payload: RequestLoginOtpPayload) =>
+  apiFetch<RequestLoginOtpResponse>("/api/users/request-login-otp/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 
@@ -209,6 +225,7 @@ export const userApi = {
   registerUser,
   activateUser,
   sendOtp,
+  requestLoginOtp,
   loginUser,
   googleLogin,
   useUserApi,

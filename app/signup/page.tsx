@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { activateUser, googleLogin, registerUser } from "@/lib/api/users";
+import { activateUser, googleLogin, registerUser, sendOtp } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { useEndovilleBrandAssets } from "@/lib/brand-assets";
 import { useAuth } from "@/lib/state/auth-context";
@@ -43,6 +43,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const handleRegister = async () => {
     setError(null);
@@ -76,6 +77,19 @@ export default function SignupPage() {
       setError(getErrorMessage(err, "Activation failed."));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError(null);
+    setResendLoading(true);
+    try {
+      await sendOtp({ email });
+      setStatus("A new activation code has been sent to your email.");
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to resend code."));
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -323,6 +337,9 @@ export default function SignupPage() {
                 </>
               ) : (
                 <>
+                  <p className="text-sm text-gray-600">
+                    Enter the code we sent to <span className="font-medium text-gray-900">{email}</span>.
+                  </p>
                   <div className="space-y-2">
                     <label htmlFor="otp" className="text-sm font-medium text-gray-700">
                       Activation OTP
@@ -342,14 +359,24 @@ export default function SignupPage() {
                   {error && <p className="text-sm text-red-600">{error}</p>}
                   {status && <p className="text-sm text-green-600">{status}</p>}
 
-                  <button
-                    type="button"
-                    className="w-full h-11 rounded-md bg-[#4C1C59] text-white font-medium transition-colors hover:bg-[#361340] disabled:opacity-60 disabled:cursor-not-allowed"
-                    onClick={handleActivate}
-                    disabled={loading || otp.length !== 6}
-                  >
-                    {loading ? "Activating..." : "Activate account"}
-                  </button>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <button
+                      type="button"
+                      className="sm:flex-1 h-11 rounded-md bg-[#4C1C59] text-white text-sm font-medium transition-colors hover:bg-[#361340] disabled:opacity-60 disabled:cursor-not-allowed"
+                      onClick={handleActivate}
+                      disabled={loading || otp.length !== 6}
+                    >
+                      {loading ? "Activating..." : "Activate account"}
+                    </button>
+                    <button
+                      type="button"
+                      className="h-11 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:border-[#4C1C59]/40 hover:bg-[#4C1C59]/5 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={handleResendOtp}
+                      disabled={resendLoading || loading || !email}
+                    >
+                      {resendLoading ? "Sending..." : "Resend code"}
+                    </button>
+                  </div>
                 </>
               )}
 

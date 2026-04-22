@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { googleLogin, loginUser, sendOtp } from "@/lib/api/users";
+import {
+  activateUser,
+  googleLogin,
+  loginUser,
+  requestLoginOtp,
+  sendOtp,
+} from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/state/auth-context";
 import { useEndovilleBrandAssets } from "@/lib/brand-assets";
@@ -41,6 +47,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [pendingActivation, setPendingActivation] = useState(false);
+  const [activationOtp, setActivationOtp] = useState("");
 
   const getErrorMessage = (err: unknown, fallback: string) => {
     const capitalize = (value: string) =>
@@ -63,6 +71,57 @@ export default function LoginPage() {
       return capitalize(err.message);
     }
     return capitalize(fallback);
+  };
+
+  const collectApiErrorText = (data: Record<string, unknown>): string => {
+    const parts: string[] = [];
+    const walk = (val: unknown) => {
+      if (typeof val === "string") {
+        parts.push(val);
+      } else if (Array.isArray(val)) {
+        val.forEach(walk);
+      }
+    };
+    Object.values(data).forEach(walk);
+    return parts.join(" ").toLowerCase();
+  };
+
+  /** True only for explicit "finish signup activation" errors — not generic API blurbs that mention "inactive". */
+  const isInactiveAccountError = (err: unknown) => {
+    if (!(err instanceof ApiError) || !err.data || typeof err.data !== "object") {
+      return false;
+    }
+    const text = collectApiErrorText(err.data as Record<string, unknown>);
+    return (
+      text.includes("not activated") ||
+      text.includes("activate your account") ||
+      text.includes("account is not active") ||
+      text.includes("must be activated") ||
+      text.includes("has not been activated")
+    );
+  };
+
+  const startActivationRecovery = async () => {
+    setPendingActivation(true);
+    setActivationOtp("");
+    setError(null);
+    setStatus(null);
+    setLoading(true);
+    try {
+      await sendOtp({ email });
+      setStatus(
+        "Your account is not activated yet. We sent a code to your email — enter it below to activate, then you can sign in."
+      );
+    } catch (err) {
+      setError(
+        getErrorMessage(
+          err,
+          "Could not send activation code. Try Resend if you already have a code from email."
+        )
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -120,10 +179,14 @@ export default function LoginPage() {
     setStatus(null);
     setLoading(true);
     try {
-      await sendOtp({ email });
+      await requestLoginOtp({ email });
       setStep("otp");
       setStatus("OTP sent. Enter the 6-digit code to finish login.");
     } catch (err) {
+      if (isInactiveAccountError(err)) {
+        await startActivationRecovery();
+        return;
+      }
       setError(getErrorMessage(err, "Failed to send OTP."));
     } finally {
       setLoading(false);
@@ -136,6 +199,8 @@ export default function LoginPage() {
     setError(null);
     setStatus(null);
     setOtp("");
+    setPendingActivation(false);
+    setActivationOtp("");
     if (method === "otp") {
       setPassword("");
     }
@@ -150,7 +215,46 @@ export default function LoginPage() {
       setAuth(response);
       router.push("/");
     } catch (err) {
+      if (isInactiveAccountError(err)) {
+        await startActivationRecovery();
+        return;
+      }
       setError(getErrorMessage(err, "Login failed."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleActivateAccount = async () => {
+    setError(null);
+    setStatus(null);
+    setLoading(true);
+    try {
+      await activateUser({ email, otp: activationOtp });
+      setPendingActivation(false);
+      setActivationOtp("");
+      if (loginMethod === "password" && password) {
+        const response = await loginUser({ email, password });
+        setAuth(response);
+        router.push("/");
+        return;
+      }
+      setStatus("Account activated. Sign in with your password or request a login code.");
+    } catch (err) {
+      setError(getErrorMessage(err, "Activation failed."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendActivationOtp = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await sendOtp({ email });
+      setStatus("A new activation code has been sent to your email.");
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to resend code."));
     } finally {
       setLoading(false);
     }
@@ -276,6 +380,68 @@ export default function LoginPage() {
                     autoComplete="one-time-code"
                     className="flex h-11 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4C1C59] focus-visible:ring-offset-2"
                   />
+                </div>
+              )}
+
+              {pendingActivation && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/90 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="text-sm font-semibold text-gray-900">Activate your account</h2>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingActivation(false);
+                        setActivationOtp("");
+                        setStatus(null);
+                      }}
+                      className="shrink-0 text-xs font-medium text-gray-500 hover:text-gray-800"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    Enter the activation code from your email. After activation you can sign in
+                    {loginMethod === "password" && password ? " with your password" : ""}.
+                  </p>
+                  <div className="space-y-2">
+                    <label htmlFor="activation-otp" className="text-sm font-medium text-gray-700">
+                      Activation code
+                    </label>
+                    <input
+                      id="activation-otp"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="6-digit code"
+                      value={activationOtp}
+                      onChange={(e) =>
+                        setActivationOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                      autoComplete="one-time-code"
+                      className="flex h-11 w-full rounded-md border border-amber-200/80 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4C1C59] focus-visible:ring-offset-2"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <button
+                      type="button"
+                      onClick={handleActivateAccount}
+                      disabled={loading || activationOtp.length !== 6 || !email}
+                      className="sm:flex-1 h-11 rounded-md bg-[#4C1C59] text-white text-sm font-medium transition-colors hover:bg-[#361340] disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {loading
+                        ? "Working..."
+                        : loginMethod === "password" && password
+                          ? "Activate and sign in"
+                          : "Activate account"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResendActivationOtp}
+                      disabled={loading || !email}
+                      className="h-11 rounded-md border border-amber-300/80 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-amber-100/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      Resend code
+                    </button>
+                  </div>
                 </div>
               )}
 

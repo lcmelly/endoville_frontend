@@ -37,7 +37,11 @@ export default function ProductCard({ product }: ProductCardProps) {
   const rating = getAverageRating(product.avg_rating);
   const imageUrl = product.image_urls?.[0];
   const [imageFailed, setImageFailed] = useState(false);
-  const itemInCart = items.find((item) => item.product.id === product.id);
+  const itemInCart = items.find(
+    (item) =>
+      item.product.id === product.id &&
+      (item.variantId === undefined || item.variantId === null)
+  );
   const quantityInCart = itemInCart?.quantity ?? 0;
 
   const fallbackSvg =
