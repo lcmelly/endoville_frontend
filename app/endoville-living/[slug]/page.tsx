@@ -19,6 +19,13 @@ const buildCategoryMap = (categories: BlogCategory[]) =>
     return acc;
   }, {});
 
+const normalizeBlogContent = (content: string) =>
+  content
+    .replace(/\r\n/g, "\n")
+    .replace(/&lt;br\s*\/?&gt;/gi, "<br />")
+    .replace(/(?:^|\n)\s*(?:&nbsp;|\u00a0)\s*(?=\n|$)/gi, "\n\n")
+    .replace(/&nbsp;/gi, "\u00a0");
+
 function EndovilleLivingDetailPageContent() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
@@ -37,6 +44,10 @@ function EndovilleLivingDetailPageContent() {
   const categoryMap = useMemo(
     () => buildCategoryMap(categories ?? []),
     [categories]
+  );
+  const normalizedPostContent = useMemo(
+    () => normalizeBlogContent(post?.content ?? ""),
+    [post?.content]
   );
 
   const updateQuery = (updates: Record<string, string | null>) => {
@@ -183,8 +194,20 @@ function EndovilleLivingDetailPageContent() {
                 {post.author_name} · {new Date(post.created_at).toLocaleDateString()}
               </p>
             </div>
-            <div className="prose prose-lg max-w-none text-gray-700">
-              <ReactMarkdown rehypePlugins={[rehypeRaw]}>{post.content}</ReactMarkdown>
+            <div className="prose prose-lg max-w-none whitespace-break-spaces text-gray-700">
+              <ReactMarkdown
+                rehypePlugins={[rehypeRaw]}
+                components={{
+                  h1: ({ ...props }) => <h1 className="font-extrabold text-black" {...props} />,
+                  h2: ({ ...props }) => <h2 className="font-extrabold text-black" {...props} />,
+                  h3: ({ ...props }) => <h3 className="font-bold text-black" {...props} />,
+                  h4: ({ ...props }) => <h4 className="font-bold text-black" {...props} />,
+                  h5: ({ ...props }) => <h5 className="font-bold text-black" {...props} />,
+                  h6: ({ ...props }) => <h6 className="font-bold text-black" {...props} />,
+                }}
+              >
+                {normalizedPostContent}
+              </ReactMarkdown>
             </div>
           </section>
 

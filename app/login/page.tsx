@@ -445,7 +445,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+,              {error && <p className="text-sm text-red-600">{error}</p>}
               {status && <p className="text-sm text-green-600">{status}</p>}
 
               {step === "credentials" ? (
