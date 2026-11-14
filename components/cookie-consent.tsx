@@ -1,62 +1,56 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type ConsentState = {
-  necessary: true;
-  analytics: boolean;
-  marketing: boolean;
-};
-
-const STORAGE_KEY = "endoville-cookie-consent";
-
-const defaultConsent: ConsentState = {
-  necessary: true,
-  analytics: false,
-  marketing: false,
-};
+import {
+  applyCookieConsent,
+  defaultCookieConsent,
+  OPEN_COOKIE_SETTINGS_EVENT,
+  readCookieConsent,
+  saveCookieConsent,
+  type CookieConsentState,
+} from "@/lib/cookie-consent";
 
 export default function CookieConsent() {
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
-  const [consent, setConsent] = useState<ConsentState>(defaultConsent);
+  const [consent, setConsent] = useState<CookieConsentState>(defaultCookieConsent);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (!stored) {
-        setIsOpen(true);
-        return;
-      }
-      const parsed = JSON.parse(stored) as ConsentState;
-      setConsent({
-        necessary: true,
-        analytics: Boolean(parsed.analytics),
-        marketing: Boolean(parsed.marketing),
-      });
-    } catch {
+    const stored = readCookieConsent();
+    if (!stored) {
+      applyCookieConsent(defaultCookieConsent);
+      setConsent(defaultCookieConsent);
       setIsOpen(true);
+      setReady(true);
+      return;
     }
+
+    setConsent(stored);
+    applyCookieConsent(stored);
+    setReady(true);
   }, []);
 
   useEffect(() => {
     const handleOpen = () => {
+      const stored = readCookieConsent() ?? defaultCookieConsent;
+      setConsent(stored);
       setIsOpen(true);
       setShowCustomize(true);
     };
 
-    window.addEventListener("open-cookie-settings", handleOpen);
-    return () => window.removeEventListener("open-cookie-settings", handleOpen);
+    window.addEventListener(OPEN_COOKIE_SETTINGS_EVENT, handleOpen);
+    return () => window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, handleOpen);
   }, []);
 
-  const saveConsent = (nextConsent: ConsentState) => {
-    setConsent(nextConsent);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextConsent));
+  const persistConsent = (nextConsent: CookieConsentState) => {
+    const saved = saveCookieConsent(nextConsent);
+    setConsent(saved);
     setIsOpen(false);
     setShowCustomize(false);
   };
 
-  if (!isOpen) {
+  if (!ready || !isOpen) {
     return null;
   }
 
@@ -125,14 +119,18 @@ export default function CookieConsent() {
           </button>
           <button
             type="button"
-            onClick={() => saveConsent({ necessary: true, analytics: false, marketing: false })}
+            onClick={() =>
+              persistConsent({ necessary: true, analytics: false, marketing: false })
+            }
             className="h-10 rounded-md border border-gray-200 px-4 text-sm font-medium text-gray-700 transition-colors hover:border-[#4C1C59]/40 hover:bg-[#4C1C59]/5"
           >
             Reject non-essential
           </button>
           <button
             type="button"
-            onClick={() => saveConsent({ necessary: true, analytics: true, marketing: true })}
+            onClick={() =>
+              persistConsent({ necessary: true, analytics: true, marketing: true })
+            }
             className="h-10 rounded-md bg-[#4C1C59] px-4 text-sm font-medium text-white transition-colors hover:bg-[#361340]"
           >
             Accept all
@@ -140,7 +138,7 @@ export default function CookieConsent() {
           {showCustomize && (
             <button
               type="button"
-              onClick={() => saveConsent(consent)}
+              onClick={() => persistConsent(consent)}
               className="h-10 rounded-md bg-[#2f1238] px-4 text-sm font-medium text-white transition-colors hover:bg-[#2a0f32]"
             >
               Save preferences

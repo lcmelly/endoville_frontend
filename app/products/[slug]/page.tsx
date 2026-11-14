@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { Award, Minus, Plus, Star } from "lucide-react";
 import { useProductByIdQuery, useProductsQuery } from "@/lib/api/products";
+import ProductReviews from "@/components/product-reviews";
 import { useCart } from "@/lib/state/cart-context";
 import { useToast } from "@/lib/state/toast-context";
 
@@ -181,6 +182,10 @@ export default function ProductDetailPage() {
                 ))}
               </div>
               <span>{rating.toFixed(1)} rating</span>
+              <span>·</span>
+              <span>
+                {product.review_count} review{product.review_count === 1 ? "" : "s"}
+              </span>
             </div>
 
             <div className="mt-6 text-2xl font-semibold text-[#4C1C59]">
@@ -245,11 +250,11 @@ export default function ProductDetailPage() {
                 type="button"
                 onClick={() => {
                   addItem(product, quantity);
-                  showToast("Added to cart.");
+                  showToast("Added to basket.");
                 }}
                 className="flex-1 rounded-full bg-[#7B9450] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#6B8447]"
               >
-                Add to cart
+                Add to basket
               </button>
             </div>
           </div>
@@ -309,6 +314,12 @@ export default function ProductDetailPage() {
               </p>
             )}
           </div>
+
+          <ProductReviews
+            productId={product.id}
+            avgRating={product.avg_rating}
+            reviewCount={product.review_count}
+          />
         </section>
       </div>
       </div>

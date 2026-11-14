@@ -44,6 +44,9 @@ export type OrderItem = {
   quantity: number;
   unit_price: string;
   line_total: string;
+  /** pending | confirmed | unavailable | replaced */
+  availability?: string;
+  availability_note?: string | null;
 };
 
 export type ShipmentEvent = {

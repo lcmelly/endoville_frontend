@@ -77,8 +77,43 @@ export const fetchBlogCategories = () =>
 export const fetchBlogSubcategories = () =>
   apiFetch<BlogSubcategory[]>("/api/blogs/subcategories/");
 
-export const fetchBlogPosts = (params?: BlogPostsQueryParams) =>
-  apiFetch<BlogPostListItem[]>(buildPostsPath(params));
+/**
+ * The backend currently ignores search/category/subcategory query params,
+ * so filtering is applied client-side using subcategories_details.
+ */
+const filterBlogPosts = (
+  posts: BlogPostListItem[],
+  params?: BlogPostsQueryParams
+) => {
+  if (!params) return posts;
+  const searchTerm = params.search?.trim().toLowerCase();
+  return posts.filter((post) => {
+    if (params.subcategory && !post.subcategories.includes(params.subcategory)) {
+      return false;
+    }
+    if (
+      params.category &&
+      !post.subcategories_details?.some(
+        (subcategory) => subcategory.category === params.category
+      )
+    ) {
+      return false;
+    }
+    if (searchTerm) {
+      const haystack =
+        `${post.title} ${post.excerpt} ${post.author_name}`.toLowerCase();
+      if (!haystack.includes(searchTerm)) {
+        return false;
+      }
+    }
+    return true;
+  });
+};
+
+export const fetchBlogPosts = async (params?: BlogPostsQueryParams) => {
+  const posts = await apiFetch<BlogPostListItem[]>(buildPostsPath(params));
+  return filterBlogPosts(posts, params);
+};
 
 export const fetchBlogPostById = (id: number) =>
   apiFetch<BlogPost>(`/api/blogs/posts/${id}/`);

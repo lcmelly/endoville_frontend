@@ -1,14 +1,57 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useBlogPostsQuery } from "@/lib/api/blogs";
+
+const BLOG_IMAGE_FALLBACK = "/blog-placeholder.jpg";
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
+
+function BlogPreviewCard({
+  href,
+  title,
+  date,
+  imageUrl,
+}: {
+  href: string;
+  title: string;
+  date: string;
+  imageUrl: string | null | undefined;
+}) {
+  const [src, setSrc] = useState(imageUrl || BLOG_IMAGE_FALLBACK);
+
+  return (
+    <Link
+      href={href}
+      className="group min-w-[220px] flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+    >
+      <div className="h-32 w-full overflow-hidden bg-[#F4ECFF]">
+        <img
+          src={src}
+          alt={title}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+          onError={() => {
+            if (src !== BLOG_IMAGE_FALLBACK) {
+              setSrc(BLOG_IMAGE_FALLBACK);
+            }
+          }}
+        />
+      </div>
+      <div className="space-y-2 p-4">
+        <p className="text-xs font-medium text-gray-400">{formatDate(date)}</p>
+        <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 transition-colors group-hover:text-[#4C1C59]">
+          {title}
+        </h3>
+      </div>
+    </Link>
+  );
+}
 
 export default function EndovilleLivingPreview() {
   const { data: posts, isLoading } = useBlogPostsQuery();
@@ -60,32 +103,13 @@ export default function EndovilleLivingPreview() {
                 </div>
               ))
             : latestPosts.map((post) => (
-                <Link
+                <BlogPreviewCard
                   key={post.id}
                   href={`/endoville-living/${post.slug}`}
-                  className="group min-w-[220px] flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div className="h-32 w-full overflow-hidden bg-gray-100">
-                    {post.featured_image_url ? (
-                      <img
-                        src={post.featured_image_url}
-                        alt={post.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-gray-400">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2 p-4">
-                    <p className="text-xs font-medium text-gray-400">{formatDate(post.created_at)}</p>
-                    <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 transition-colors group-hover:text-[#4C1C59]">
-                      {post.title}
-                    </h3>
-                  </div>
-                </Link>
+                  title={post.title}
+                  date={post.created_at}
+                  imageUrl={post.featured_image_url}
+                />
               ))}
         </div>
       </div>

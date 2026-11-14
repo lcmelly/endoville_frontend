@@ -305,9 +305,21 @@ function ProductsPageContent() {
         activeCategoryName,
         activeSubcategoryName,
         inStockOnly ? "In stock" : null,
+        minPrice ? `Min: ${minPrice}` : null,
+        maxPrice ? `Max: ${maxPrice}` : null,
       ].filter(Boolean) as string[],
-    [search, activeBrandName, activeCategoryName, activeSubcategoryName, inStockOnly]
+    [
+      search,
+      activeBrandName,
+      activeCategoryName,
+      activeSubcategoryName,
+      inStockOnly,
+      minPrice,
+      maxPrice,
+    ]
   );
+
+  const hasActiveFilters = appliedFilterValues.length > 0;
 
   const filteredProducts = useMemo(() => {
     const min = parseNumber(minPrice);
@@ -582,14 +594,16 @@ function ProductsPageContent() {
                 />
               </div>
               <div className="hidden lg:flex flex-col items-end gap-3">
-                <button
-                  type="button"
-                  onClick={clearAllFilters}
-                  className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#ff597a] flex items-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  <span>Clear all Filters</span>
-                </button>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:border-[#4C1C59]/40 hover:text-[#ff597a] flex items-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>Clear all Filters</span>
+                  </button>
+                )}
                 <div className="flex flex-col items-end">
                   <label className="text-xs me-5 mb-2 font-semibold uppercase tracking-wide text-gray-600">
                     Sort by :
@@ -609,7 +623,7 @@ function ProductsPageContent() {
             </div>
           </div>
 
-          {appliedFilterValues.length > 0 && (
+          {hasActiveFilters && (
             <div className="mb-4 flex flex-wrap items-center gap-2 lg:hidden">
               {appliedFilterValues.map((value) => (
                 <span
@@ -636,17 +650,17 @@ function ProductsPageContent() {
           )}
 
           {isLoading ? (
-            <div className="grid gap-6 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, index) => (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {Array.from({ length: 10 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-[360px] animate-pulse rounded-2xl border border-gray-100 bg-white"
+                  className="h-[280px] animate-pulse rounded-xl bg-white"
                 />
               ))}
             </div>
           ) : (
             <>
-              <div className="grid gap-6 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {pagedProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

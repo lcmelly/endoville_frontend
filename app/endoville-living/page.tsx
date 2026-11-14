@@ -275,18 +275,12 @@ function EndovilleLivingPageContent() {
                       </div>
 
                       <div className="bg-gray-100">
-                        {featuredPost.featured_image_url ? (
-                          <img
-                            src={featuredPost.featured_image_url}
-                            alt={featuredPost.title}
-                            className="h-full min-h-[340px] w-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="flex min-h-[340px] items-center justify-center text-sm text-gray-400">
-                            No image
-                          </div>
-                        )}
+                        <img
+                          src={featuredPost.featured_image_url || "/blog-placeholder.jpg"}
+                          alt={featuredPost.title}
+                          className="h-full min-h-[340px] w-full object-cover"
+                          loading="lazy"
+                        />
                       </div>
                     </div>
                   </div>
@@ -307,18 +301,12 @@ function EndovilleLivingPageContent() {
                         className="group overflow-hidden rounded-[24px] border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
                       >
                         <div className="overflow-hidden bg-gray-100">
-                          {post.featured_image_url ? (
-                            <img
-                              src={post.featured_image_url}
-                              alt={post.title}
-                              className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="flex h-44 items-center justify-center text-sm text-gray-400">
-                              No image
-                            </div>
-                          )}
+                          <img
+                            src={post.featured_image_url || "/blog-placeholder.jpg"}
+                            alt={post.title}
+                            className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                          />
                         </div>
                         <div className="p-5">
                           <h3 className="text-2xl font-semibold leading-tight text-gray-900 transition-colors group-hover:text-[#4C1C59]">
@@ -354,18 +342,12 @@ function EndovilleLivingPageContent() {
                         className="group overflow-hidden rounded-[24px] border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
                       >
                         <div className="overflow-hidden bg-gray-100">
-                          {post.featured_image_url ? (
-                            <img
-                              src={post.featured_image_url}
-                              alt={post.title}
-                              className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="flex h-40 items-center justify-center text-sm text-gray-400">
-                              No image
-                            </div>
-                          )}
+                          <img
+                            src={post.featured_image_url || "/blog-placeholder.jpg"}
+                            alt={post.title}
+                            className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                          />
                         </div>
                         <div className="p-5">
                           <h3 className="line-clamp-3 text-xl font-semibold leading-snug text-gray-900 transition-colors group-hover:text-[#4C1C59]">

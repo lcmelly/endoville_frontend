@@ -3,6 +3,8 @@
 import { Suspense, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 import Link from "next/link";
 import {
@@ -194,8 +196,9 @@ function EndovilleLivingDetailPageContent() {
                 {post.author_name} · {new Date(post.created_at).toLocaleDateString()}
               </p>
             </div>
-            <div className="prose prose-lg max-w-none whitespace-break-spaces text-gray-700">
+            <div className="prose prose-lg max-w-none text-gray-700">
               <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkBreaks]}
                 rehypePlugins={[rehypeRaw]}
                 components={{
                   h1: ({ ...props }) => <h1 className="font-extrabold text-black" {...props} />,
@@ -204,6 +207,20 @@ function EndovilleLivingDetailPageContent() {
                   h4: ({ ...props }) => <h4 className="font-bold text-black" {...props} />,
                   h5: ({ ...props }) => <h5 className="font-bold text-black" {...props} />,
                   h6: ({ ...props }) => <h6 className="font-bold text-black" {...props} />,
+                  table: ({ ...props }) => (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse" {...props} />
+                    </div>
+                  ),
+                  th: ({ ...props }) => (
+                    <th
+                      className="border border-gray-200 bg-gray-50 px-4 py-2 text-left font-semibold text-gray-900"
+                      {...props}
+                    />
+                  ),
+                  td: ({ ...props }) => (
+                    <td className="border border-gray-200 px-4 py-2 align-top" {...props} />
+                  ),
                 }}
               >
                 {normalizedPostContent}

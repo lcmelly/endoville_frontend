@@ -1,8 +1,7 @@
 "use client";
 
-import { Minus, Plus, ShoppingCart, Star } from "lucide-react";
+import { Minus, Plus, Star } from "lucide-react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Product } from "@/lib/api/products";
 import { cn } from "@/lib/utils";
@@ -22,7 +21,7 @@ const formatPrice = (price: string, currencySymbol?: string) => {
         maximumFractionDigits: 2,
       })
     : price;
-  return symbol ? `${symbol} ${formattedPrice}` : formattedPrice;
+  return symbol ? `${symbol}${formattedPrice}` : formattedPrice;
 };
 
 const getAverageRating = (rating: string | null) => {
@@ -30,25 +29,30 @@ const getAverageRating = (rating: string | null) => {
   return Number.isFinite(value) ? value : 0;
 };
 
+const formatReviewCount = (count: number) => count.toLocaleString("en-US");
+
 export default function ProductCard({ product }: ProductCardProps) {
-  const router = useRouter();
   const { addItem, decrementItem, items } = useCart();
   const { showToast } = useToast();
   const rating = getAverageRating(product.avg_rating);
+  const reviewCount = product.review_count ?? 0;
   const imageUrl = product.image_urls?.[0];
   const [imageFailed, setImageFailed] = useState(false);
+  const hasVariants = (product.variants?.length ?? 0) > 1;
   const itemInCart = items.find(
     (item) =>
       item.product.id === product.id &&
       (item.variantId === undefined || item.variantId === null)
   );
   const quantityInCart = itemInCart?.quantity ?? 0;
+  const filledStars = Math.round(rating);
 
+  const brandName = product.brand_details?.name;
   const fallbackSvg =
     "data:image/svg+xml;utf8," +
     encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
-        <rect width="240" height="240" rx="16" fill="#F3F4F6"/>
+        <rect width="240" height="240" fill="#FFFFFF"/>
         <rect x="56" y="70" width="128" height="100" rx="12" fill="#E5E7EB"/>
         <path d="M80 150l26-30 20 22 26-34 28 42H80z" fill="#D1D5DB"/>
         <circle cx="150" cy="96" r="10" fill="#D1D5DB"/>
@@ -56,107 +60,124 @@ export default function ProductCard({ product }: ProductCardProps) {
     );
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-gray-100 bg-white p-3 sm:p-4 shadow-sm transition-shadow hover:shadow-md">
-      <Link href={`/products/${product.slug}`} className="group flex flex-1 flex-col">
-        <div className="relative rounded-xl bg-gray-50 p-3 sm:p-4">
-          {imageUrl && !imageFailed ? (
-            <img
-              src={imageUrl}
-              alt={product.name}
-              className="h-36 sm:h-44 w-full object-contain"
-              loading="lazy"
-              onError={() => setImageFailed(true)}
-            />
-          ) : (
-            <img
-              src={fallbackSvg}
-              alt="Product placeholder"
-              className="h-36 sm:h-44 w-full object-contain"
-              loading="lazy"
-            />
+    <div className="group flex h-full flex-col overflow-hidden rounded-xl border border-gray-100 bg-white">
+      <div className="relative aspect-4/5 overflow-hidden bg-white sm:aspect-square">
+        {product.featured && (
+          <span className="absolute left-0 top-2 z-20 rounded-r-sm bg-[#0A6B3C] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+            Featured
+          </span>
+        )}
+
+        <Link href={`/products/${product.slug}`} className="absolute inset-0 block">
+          <img
+            src={imageUrl && !imageFailed ? imageUrl : fallbackSvg}
+            alt={product.name}
+            className="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]"
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+          />
+        </Link>
+
+        <div
+          className={cn(
+            "absolute inset-x-0 bottom-0 z-20 px-2 pb-2",
+            quantityInCart === 0 &&
+              "pointer-events-none opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
           )}
-          <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-[#FBEFD2] px-2.5 py-1 text-xs font-semibold text-[#4C1C59]">
-            <Star className="h-3.5 w-3.5 fill-[#F2BA52] text-[#F2BA52]" />
-            {rating.toFixed(1)}
-          </div>
-        </div>
-
-        <div className="mt-3 sm:mt-4 flex flex-1 flex-col space-y-2 sm:space-y-3">
-          <div className="space-y-1">
-            {product.brand_details?.name && (
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#4C1C59]">
-                {product.brand_details.name}
-              </p>
-            )}
-            <h3 className="text-sm sm:text-base font-semibold text-gray-900 group-hover:text-[#4C1C59]">
-              {product.name}
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-500 leading-snug line-clamp-2">
-              {product.description}
-            </p>
-          </div>
-
-          <div className="mt-auto flex items-center gap-2 pt-2">
-            <div className="text-base sm:text-lg font-bold text-[#4C1C59]">
-              {formatPrice(product.price, product.currency_symbol)}
-            </div>
-            {quantityInCart > 0 && (
-              <span className="rounded-full bg-[#F4ECFF] px-2 py-0.5 text-[11px] sm:text-xs font-semibold text-[#4C1C59]">
-                In cart: {quantityInCart}
+        >
+          {quantityInCart > 0 ? (
+            <div className="flex items-center gap-1 rounded-md bg-white/95 p-0.5 shadow-sm ring-1 ring-gray-200">
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded text-[#4C1C59] transition-colors hover:bg-gray-100"
+                onClick={() => {
+                  decrementItem(product.id);
+                  showToast("Updated basket quantity.");
+                }}
+                aria-label="Decrease quantity"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <span className="min-w-6 flex-1 text-center text-xs font-semibold text-gray-900">
+                {quantityInCart}
               </span>
-            )}
-          </div>
-        </div>
-      </Link>
-
-      <div className="mt-3 sm:mt-4 flex items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            className={cn(
-              "flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl border transition-colors",
-              quantityInCart > 0
-                ? "border-[#4C1C59] bg-[#4C1C59] text-white"
-                : "border-gray-200 bg-white text-[#4C1C59] hover:border-[#4C1C59]/40"
-            )}
-            aria-label="Add to cart"
-            onClick={() => {
-              addItem(product, 1);
-              showToast("Added to cart.");
-            }}
-          >
-            {quantityInCart > 0 ? (
-              <Plus className="h-5 w-5" />
-            ) : (
-              <ShoppingCart className="h-5 w-5" />
-            )}
-          </button>
-          {quantityInCart > 0 && (
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded text-[#4C1C59] transition-colors hover:bg-gray-100"
+                onClick={() => {
+                  addItem(product, 1);
+                  showToast("Added to basket.");
+                }}
+                aria-label="Increase quantity"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
-              className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl border border-gray-200 text-[#4C1C59] transition-colors hover:border-[#4C1C59]/40"
+              className="pointer-events-auto flex h-9 w-full items-center justify-center rounded-md bg-[#4C1C59] text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#361340]"
               onClick={() => {
-                decrementItem(product.id);
-                showToast("Updated cart quantity.");
+                addItem(product, 1);
+                showToast("Added to basket.");
               }}
-              aria-label="Decrease quantity"
             >
-              <Minus className="h-5 w-5" />
+              Add to basket
             </button>
           )}
-          <button
-            type="button"
-            className={cn(
-              "flex h-9 sm:h-11 flex-1 items-center justify-center rounded-xl",
-              "bg-[#F2BA52] text-xs sm:text-sm font-semibold text-[#361340] transition-colors hover:bg-[#E5A93F]"
-            )}
-            onClick={() => {
-              addItem(product, 1);
-              showToast("Added to cart.");
-              router.push("/cart");
-            }}
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col px-2.5 pb-3 pt-1.5">
+        {hasVariants && (
+          <Link
+            href={`/products/${product.slug}`}
+            className="mb-0.5 text-xs font-medium text-[#126CC5] hover:underline"
           >
-            Buy Now
-          </button>
+            + More options
+          </Link>
+        )}
+
+        <Link href={`/products/${product.slug}`} className="block space-y-0.5">
+          {brandName && (
+            <p className="truncate text-[11px] font-medium leading-4 text-gray-500">
+              {brandName}
+            </p>
+          )}
+          <h3 className="line-clamp-2 text-[13px] leading-5 text-[#181B1F] transition-colors group-hover:text-[#4C1C59]">
+            {product.name}
+          </h3>
+        </Link>
+
+        <div className="mt-1 flex items-center gap-1">
+          <div className="flex items-center" aria-label={`${rating.toFixed(1)} out of 5`}>
+            {[...Array(5)].map((_, index) => (
+              <Star
+                key={index}
+                className={cn(
+                  "h-3 w-3",
+                  index < filledStars
+                    ? "fill-[#F2BA52] text-[#F2BA52]"
+                    : "fill-gray-200 text-gray-200"
+                )}
+              />
+            ))}
+          </div>
+          {reviewCount > 0 && (
+            <Link
+              href={`/products/${product.slug}`}
+              className="text-[11px] text-[#126CC5] hover:underline"
+            >
+              {formatReviewCount(reviewCount)}
+            </Link>
+          )}
+        </div>
+
+        <div className="mt-auto pt-1.5">
+          <div className="text-base font-bold leading-none text-[#181B1F]">
+            {formatPrice(product.price, product.currency_symbol)}
+          </div>
+        </div>
       </div>
     </div>
   );

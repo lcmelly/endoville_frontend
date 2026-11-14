@@ -1,0 +1,10 @@
+# Next.js on Netlify uses the official Next.js runtime for routing.
+# Do not add a SPA /* → /index.html rewrite; that breaks App Router.
+
+[build]
+  command = "npm run build"
+
+# Soft geo-block in production: only Kenya (KE) and USA (US) can browse.
+# Local `next dev` stays open unless GEO_BLOCK_ENABLED=true in .env.local.
+[build.environment]
+  GEO_BLOCK_ENABLED = "true"

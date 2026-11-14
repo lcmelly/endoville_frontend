@@ -12,16 +12,16 @@ const getRatingValue = (rating: string | null) => {
 
 const getVisibleCountForWidth = (width: number) => {
   if (width >= 1536) {
-    return 5;
+    return 6;
   }
   if (width >= 1280) {
-    return 4;
+    return 5;
   }
   if (width >= 1024) {
-    return 3;
+    return 4;
   }
   if (width >= 640) {
-    return 2;
+    return 3;
   }
   return 2;
 };
@@ -40,7 +40,7 @@ export default function FeaturedProducts() {
   );
   const [cardWidth, setCardWidth] = useState(0);
   const [newArrivalsCardWidth, setNewArrivalsCardWidth] = useState(0);
-  const gapPx = 24;
+  const gapPx = 16;
 
   const topRatedProducts = useMemo(
     () =>
@@ -233,10 +233,7 @@ export default function FeaturedProducts() {
         <div className="container mx-auto px-4">
           <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-col gap-3">
-              <span className="text-sm font-semibold uppercase tracking-wide text-[#361340]">
-                Top rated
-              </span>
-              <h2 className="text-3xl font-bold text-gray-900">Best rated picks</h2>
+              <h2 className="text-3xl font-bold text-gray-900">Top Rated</h2>
               <p className="text-sm text-gray-500">
                 Discover the most loved supplements from our community.
               </p>
@@ -250,11 +247,11 @@ export default function FeaturedProducts() {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-5">
-              {Array.from({ length: 4 }).map((_, index) => (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-[360px] animate-pulse rounded-2xl border border-gray-100 bg-white"
+                  className="h-[280px] animate-pulse rounded-xl border border-gray-100 bg-white"
                 />
               ))}
             </div>
@@ -326,10 +323,7 @@ export default function FeaturedProducts() {
         <div className="container mx-auto px-4">
           <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-col gap-3">
-              <span className="text-sm font-semibold uppercase tracking-wide text-[#361340]">
-                New arrivals
-              </span>
-              <h2 className="text-3xl font-bold text-gray-900">Fresh in store</h2>
+              <h2 className="text-3xl font-bold text-gray-900">New Arrivals</h2>
               <p className="text-sm text-gray-500">
                 Explore the latest additions to Endoville Health.
               </p>
@@ -343,11 +337,11 @@ export default function FeaturedProducts() {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-5">
-              {Array.from({ length: 4 }).map((_, index) => (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-[360px] animate-pulse rounded-2xl border border-gray-100 bg-white"
+                  className="h-[280px] animate-pulse rounded-xl border border-gray-100 bg-white"
                 />
               ))}
             </div>

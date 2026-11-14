@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api/client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiFetch, appFetch } from "@/lib/api/client";
 import { useLocation } from "@/lib/state/location-context";
 
 export type ProductReview = {
@@ -15,6 +15,23 @@ export type ProductReview = {
   is_anonymous: boolean;
   created_at: string;
   updated_at: string;
+  is_flagged?: boolean;
+  flag_reason?: string | null;
+  flagged_at?: string | null;
+};
+
+export type CreateProductReviewPayload = {
+  product: number;
+  order: number;
+  rating: number;
+  body?: string;
+  is_anonymous?: boolean;
+};
+
+export type UpdateProductReviewPayload = {
+  rating?: number;
+  body?: string;
+  is_anonymous?: boolean;
 };
 
 export type ProductVariantOptionDetail = {
@@ -196,6 +213,83 @@ export const useCurrenciesQuery = () =>
     staleTime: 5 * 60_000,
   });
 
+export const fetchProductReviews = (productId?: number) => {
+  const path =
+    typeof productId === "number"
+      ? `/api/products/product-reviews/?product=${productId}`
+      : "/api/products/product-reviews/";
+  return apiFetch<ProductReview[]>(path);
+};
+
+export const createProductReview = (payload: CreateProductReviewPayload) =>
+  appFetch<ProductReview>("/api/proxy/products/product-reviews/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const updateProductReview = (
+  id: number,
+  payload: UpdateProductReviewPayload
+) =>
+  appFetch<ProductReview>(`/api/proxy/products/product-reviews/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+export const deleteProductReview = (id: number) =>
+  appFetch<void>(`/api/proxy/products/product-reviews/${id}/`, {
+    method: "DELETE",
+  });
+
+export const useProductReviewsQuery = (productId: number | null) =>
+  useQuery({
+    queryKey: ["product-reviews", productId ?? "none"],
+    queryFn: () => fetchProductReviews(productId as number),
+    enabled: typeof productId === "number",
+  });
+
+export const useCreateProductReviewMutation = (productId: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createProductReview,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["product-reviews", productId] });
+      void queryClient.invalidateQueries({ queryKey: ["product", productId] });
+      void queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+};
+
+export const useUpdateProductReviewMutation = (productId: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: UpdateProductReviewPayload;
+    }) => updateProductReview(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["product-reviews", productId] });
+      void queryClient.invalidateQueries({ queryKey: ["product", productId] });
+      void queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+};
+
+export const useDeleteProductReviewMutation = (productId: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteProductReview,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["product-reviews", productId] });
+      void queryClient.invalidateQueries({ queryKey: ["product", productId] });
+      void queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+};
+
 export const productApi = {
   fetchCategories,
   fetchBrands,
@@ -203,10 +297,18 @@ export const productApi = {
   fetchProductById,
   fetchProducts,
   fetchSubcategories,
+  fetchProductReviews,
+  createProductReview,
+  updateProductReview,
+  deleteProductReview,
   useBrandsQuery,
   useCategoriesQuery,
   useCurrenciesQuery,
   useProductByIdQuery,
   useProductsQuery,
   useSubcategoriesQuery,
+  useProductReviewsQuery,
+  useCreateProductReviewMutation,
+  useUpdateProductReviewMutation,
+  useDeleteProductReviewMutation,
 };

@@ -11,7 +11,6 @@ describe("registerUser", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
-    // @ts-expect-error - tests override global fetch
     global.fetch = fetchMock;
   });
 
@@ -77,7 +76,6 @@ describe("activateUser", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
-    // @ts-expect-error - tests override global fetch
     global.fetch = fetchMock;
   });
 
@@ -137,7 +135,6 @@ describe("sendOtp", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
-    // @ts-expect-error - tests override global fetch
     global.fetch = fetchMock;
   });
 
@@ -187,7 +184,6 @@ describe("requestLoginOtp", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
-    // @ts-expect-error - tests override global fetch
     global.fetch = fetchMock;
   });
 
@@ -238,7 +234,6 @@ describe("loginUser", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
-    // @ts-expect-error - tests override global fetch
     global.fetch = fetchMock;
   });
 

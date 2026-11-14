@@ -1,8 +1,10 @@
 /**
  * Root of the backend REST API.
  * Keep this as the single source of truth for all endpoints.
+ * Override via NEXT_PUBLIC_API_BASE_URL (e.g. http://127.0.0.1:8000 for local dev).
  */
-export const API_BASE_URL = "https://source.endovillehealth.com/";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://source.endovillehealth.com/";
 
 /**
  * Safely join the base URL with a relative API path.
@@ -25,7 +27,16 @@ const parseJsonResponse = async <T>(response: Response): Promise<T> => {
     throw new ApiError(response.status, errorData);
   }
 
-  return response.json() as Promise<T>;
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 };
 
 /**

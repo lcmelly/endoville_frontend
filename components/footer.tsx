@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { openCookieSettings } from "@/lib/cookie-consent";
 
 export default function Footer() {
   return (
@@ -29,8 +30,8 @@ export default function Footer() {
             <Link href="/endoville-living" className="block hover:text-white">
               Endoville Living
             </Link>
-            <Link href="/cart" className="block hover:text-white">
-              Cart
+            <Link href="/basket" className="block hover:text-white">
+              Basket
             </Link>
           </div>
           <div className="space-y-2 text-sm text-white">
@@ -64,9 +65,7 @@ export default function Footer() {
               <span className="text-white/40">•</span>
               <button
                 type="button"
-                onClick={() =>
-                  window.dispatchEvent(new Event("open-cookie-settings"))
-                }
+                onClick={openCookieSettings}
                 className="hover:text-white"
               >
                 Cookie settings

@@ -94,7 +94,7 @@ export default function Navbar() {
   };
 
   const handleCartClick = () => {
-    router.push("/cart");
+    router.push("/basket");
   };
 
   const handleLocationSelect = (option: (typeof locationOptions)[number]) => {
@@ -335,11 +335,11 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Shopping Cart */}
+            {/* Shopping Basket */}
             <button
               onClick={handleCartClick}
               className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100 transition-colors group relative"
-              aria-label="Shopping Cart"
+              aria-label="Shopping Basket"
             >
               <div className="relative">
                 <ShoppingCart className="h-6 w-6 text-[#361340] group-hover:text-[#4C1C59] transition-colors" />
@@ -350,17 +350,17 @@ export default function Navbar() {
                 )}
               </div>
               <span className="text-xs text-gray-600 group-hover:text-[#4C1C59] transition-colors">
-                Cart
+                Basket
               </span>
             </button>
           </div>
 
-          {/* Mobile Cart + Menu */}
+          {/* Mobile Basket + Menu */}
           <div className="md:hidden flex items-center gap-2">
             <button
               onClick={handleCartClick}
               className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label="Shopping Cart"
+              aria-label="Shopping Basket"
             >
               <ShoppingCart className="h-6 w-6 text-[#361340]" />
               {itemCount > 0 && (
@@ -385,16 +385,6 @@ export default function Navbar() {
 
         {/* Navigation Links - Desktop */}
         <div className="hidden md:flex items-center gap-8 pb-4 ms-0.1">
-          {(categories ?? []).slice(0, 5).map((category) => (
-            <Link
-              key={category.id}
-              href={`/products?category=${category.id}`}
-              className="font-heading group relative text-sm font-bold text-gray-700 transition-colors hover:text-[#4C1C59]"
-            >
-              {category.name}
-              <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-[#4C1C59] transition-all duration-300 group-hover:w-full" />
-            </Link>
-          ))}
           {navigationItems.map((item) => {
             const active = isActive(item.href);
             if (item.label === "Categories") {
@@ -428,6 +418,16 @@ export default function Navbar() {
               </Link>
             );
           })}
+          {(categories ?? []).slice(0, 5).map((category) => (
+            <Link
+              key={category.id}
+              href={`/products?category=${category.id}`}
+              className="font-heading group relative text-sm font-bold text-gray-700 transition-colors hover:text-[#4C1C59]"
+            >
+              {category.name}
+              <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-[#4C1C59] transition-all duration-300 group-hover:w-full" />
+            </Link>
+          ))}
         </div>
       </nav>
 
@@ -562,7 +562,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
               >
                 <ShoppingCart className="h-5 w-5 text-[#361340]" />
-                <span className="text-sm font-medium text-gray-700">Cart</span>
+                <span className="text-sm font-medium text-gray-700">Basket</span>
                 {itemCount > 0 && (
                   <span className="h-5 w-5 bg-[#F2BA52] text-[#361340] rounded-full flex items-center justify-center text-xs font-bold">
                     {itemCount > 9 ? "9+" : itemCount}

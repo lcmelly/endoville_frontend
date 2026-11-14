@@ -15,6 +15,11 @@ const allowedRoutePatterns = [
   { pattern: /^\/api\/orders\/cart\/me\/$/, methods: ["GET"] },
   { pattern: /^\/api\/orders\/cart\/sync\/$/, methods: ["PUT", "POST"] },
   { pattern: /^\/api\/orders\/cart\/clear\/$/, methods: ["DELETE"] },
+  { pattern: /^\/api\/products\/product-reviews\/$/, methods: ["POST"] },
+  {
+    pattern: /^\/api\/products\/product-reviews\/\d+\/$/,
+    methods: ["PATCH", "PUT", "DELETE"],
+  },
 ];
 
 const resolveBackendPath = (segments: string[]) => {

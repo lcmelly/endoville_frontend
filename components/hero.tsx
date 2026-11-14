@@ -24,13 +24,6 @@ export default function Hero({ showImages = true }: HeroProps) {
         >
           {/* Left Content */}
           <div className="text-left space-y-6 relative z-10 mt-[-10%]">
-            {/* Subheading/Tagline */}
-            <div>
-              <span className="text-sm font-medium text-gray-700">
-                Wellness. Vitality. Health.
-              </span>
-            </div>
-
             {/* Main Heading */}
             <h1 className="text-3xl md:text-3xl lg:text-5xl font-bold text-gray-900 leading-tight">
             Premium Health Supplements & Vitamins for Your Wellness Journey
@@ -120,29 +113,29 @@ export default function Hero({ showImages = true }: HeroProps) {
             <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "0s" }}>
               <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
               <span className="mt-6">
-                <strong>Science-Backed Formulations</strong> — Every supplement is developed with
-                clinically-researched ingredients at effective dosages.
+                <strong>Science-backed formulations</strong> built on clinically researched
+                ingredients at effective dosages.
               </span>
             </li>
             <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "6s" }}>
               <CheckCircle className="h-5 w-5 text-[#2a0f32]" />
               <span className="truncate">
-                <strong>Third-Party Tested</strong> — Independent lab testing ensures purity,
-                potency, and safety in every batch.
+                <strong>Third-party tested</strong> in independent labs for purity, potency,
+                and safety in every batch.
               </span>
             </li>
             <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "12s" }}>
               <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#2a0f32]" />
               <span className="truncate">
-                <strong>Sustainably Sourced</strong> — We prioritize eco-friendly packaging
-                and ethically sourced ingredients.
+                <strong>Sustainably sourced</strong> with eco-friendly packaging and
+                ethically sourced ingredients.
               </span>
             </li>
             <li className="absolute inset-0 flex items-center justify-center gap-3 rotating-line" style={{ animationDelay: "18s" }}>
               <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#2a0f32]" />
               <span className="truncate">
-                <strong>Expert-Curated Selection</strong> — Our team of nutritionists and health
-                professionals handpick every product.
+                <strong>Expert-curated selection</strong> handpicked by nutritionists and
+                health professionals.
               </span>
             </li>
           </ul>
