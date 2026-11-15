@@ -80,11 +80,13 @@ export default function Hero({ showImages = true }: HeroProps) {
                 {/* Placeholder for overlapping images */}
                 <div className="relative w-full h-full max-w-lg">
                   {/* Top Image (larger, behind) */}
-                  <div className="absolute top-0 left-0 lg:w-[90%] w-[70%] aspect-4/5 rounded-[10%] shadow-lg overflow-hidden z-10 lg:ms-[-10%] xlg:ms-[-20%]">
+                  <div className="absolute top-0 left-0 lg:w-[90%] w-[70%] aspect-4/5 rounded-[10%] bg-gray-100 shadow-lg overflow-hidden z-10 lg:ms-[-10%] xlg:ms-[-20%]">
                     <img
                       src={hero1Url}
                       alt="Premium supplements"
                       className="h-full w-full object-cover"
+                      loading="eager"
+                      decoding="async"
                     />
                   </div>
 
@@ -97,6 +99,8 @@ export default function Hero({ showImages = true }: HeroProps) {
                         backgroundColor: "#B1D989",
                       }}
                       className="h-full w-full object-cover"
+                      loading="eager"
+                      decoding="async"
                     />
                   </div>
                 </div>

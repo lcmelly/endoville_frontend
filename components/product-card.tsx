@@ -38,6 +38,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const reviewCount = product.review_count ?? 0;
   const imageUrl = product.image_urls?.[0];
   const [imageFailed, setImageFailed] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const hasVariants = (product.variants?.length ?? 0) > 1;
   const itemInCart = items.find(
     (item) =>
@@ -70,12 +71,30 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         <Link href={`/products/${product.slug}`} className="absolute inset-0 block">
           <img
-            src={imageUrl && !imageFailed ? imageUrl : fallbackSvg}
-            alt={product.name}
-            className="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]"
-            loading="lazy"
-            onError={() => setImageFailed(true)}
+            src={fallbackSvg}
+            alt=""
+            aria-hidden="true"
+            className="h-full w-full object-contain p-2"
           />
+          {imageUrl && !imageFailed && (
+            <img
+              src={imageUrl}
+              alt={product.name}
+              className={cn(
+                "absolute inset-0 h-full w-full object-contain p-2 transition-[opacity,transform] duration-300 group-hover:scale-[1.02]",
+                imageLoaded ? "opacity-100" : "opacity-0"
+              )}
+              loading="lazy"
+              decoding="async"
+              ref={(img) => {
+                if (img?.complete && img.naturalWidth > 0) {
+                  setImageLoaded(true);
+                }
+              }}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageFailed(true)}
+            />
+          )}
         </Link>
 
         <div

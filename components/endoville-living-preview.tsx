@@ -24,21 +24,27 @@ function BlogPreviewCard({
   imageUrl: string | null | undefined;
 }) {
   const [src, setSrc] = useState(imageUrl || BLOG_IMAGE_FALLBACK);
+  const [imageLoaded, setImageLoaded] = useState(!imageUrl);
 
   return (
     <Link
       href={href}
       className="group min-w-[220px] flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
     >
-      <div className="h-32 w-full overflow-hidden bg-[#F4ECFF]">
+      <div className="relative h-32 w-full overflow-hidden bg-[#F4ECFF]">
         <img
           src={src}
           alt={title}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className={`h-full w-full object-cover transition-[opacity,transform] duration-300 group-hover:scale-105 ${
+            imageLoaded ? "opacity-100" : "opacity-0"
+          }`}
           loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
           onError={() => {
             if (src !== BLOG_IMAGE_FALLBACK) {
               setSrc(BLOG_IMAGE_FALLBACK);
+              setImageLoaded(true);
             }
           }}
         />
