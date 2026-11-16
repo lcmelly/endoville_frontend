@@ -150,7 +150,9 @@ function LoginPageContent() {
           try {
             const loginResponse = await googleLogin({ access_token: response.access_token });
             setAuth(loginResponse);
-            redirectAfterAuth();
+            // Read next at callback time — Google client can outlive a stale React closure.
+            const params = new URLSearchParams(window.location.search);
+            router.push(getSafeNextPath(params.get("next")));
           } catch (err) {
             setError(getErrorMessage(err, "Google login failed."));
           } finally {
@@ -176,8 +178,7 @@ function LoginPageContent() {
     script.dataset.googleIdentity = "true";
     script.onload = initializeClient;
     document.body.appendChild(script);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- init Google once; redirect uses latest nextPath via closure refresh on remount
-  }, [getErrorMessage, nextPath, setAuth]);
+  }, [getErrorMessage, router, setAuth]);
 
   const handleSendOtp = async () => {
     setError(null);

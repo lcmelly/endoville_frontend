@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -11,7 +11,7 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/lib/state/cart-context";
 import { cartItemsToSyncPayload } from "@/lib/cart/sync-utils";
 import { useOrdersApi } from "@/lib/api/orders";
@@ -98,7 +98,7 @@ const STEPS: Array<{ id: CheckoutStep; label: string }> = [
   { id: "payment", label: "Payment" },
 ];
 
-export default function BasketPage() {
+function BasketPageContent() {
   const { items, updateQuantity, removeItem, clear } = useCart();
   const { auth, authLoading } = useAuth();
   const { placeOrder, getOrders } = useOrdersApi();
@@ -108,12 +108,14 @@ export default function BasketPage() {
   const { data: currencies } = useCurrenciesQuery();
   const { showToast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { location } = useLocation();
   const [submitting, setSubmitting] = useState(false);
   const [stkProcessing, setStkProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showShippingValidation, setShowShippingValidation] = useState(false);
   const [step, setStep] = useState<CheckoutStep>("cart");
+  const resumeCheckout = searchParams.get("checkout") === "1";
   const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card">("mpesa");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [shipping, setShipping] = useState<ShippingState>(() => ({
@@ -317,11 +319,19 @@ export default function BasketPage() {
 
   const goToCheckout = () => {
     if (!isAuthenticated) {
-      router.push("/login?next=/basket");
+      router.push("/login?next=/basket%3Fcheckout%3D1");
       return;
     }
     setStep("shipping");
   };
+
+  useEffect(() => {
+    if (!resumeCheckout || authLoading || !isAuthenticated || items.length === 0) {
+      return;
+    }
+    setStep("shipping");
+    router.replace("/basket", { scroll: false });
+  }, [authLoading, isAuthenticated, items.length, resumeCheckout, router]);
 
   const placeOrderAndPay = async () => {
     if (!validateShippingBeforePayment()) {
@@ -1001,5 +1011,13 @@ export default function BasketPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function BasketPage() {
+  return (
+    <Suspense fallback={null}>
+      <BasketPageContent />
+    </Suspense>
   );
 }

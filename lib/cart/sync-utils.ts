@@ -139,3 +139,44 @@ export function mergeLocalAndBackendLines(
 export function hasAnyLine(lines: BackendCartLine[]) {
   return lines.some((l) => (l.product != null || l.variant != null) && l.quantity > 0);
 }
+
+const lineSortKey = (product: number | null | undefined, variant: number | null | undefined) =>
+  variant != null ? `v:${variant}` : `p:${product ?? 0}`;
+
+const normalizeCartSignature = (
+  lines: Array<{ product?: number | null; variant?: number | null; quantity: number }>
+) =>
+  lines
+    .map((line) => ({
+      key: lineSortKey(line.product, line.variant),
+      quantity: line.quantity,
+    }))
+    .filter((line) => line.quantity > 0)
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+/** True when browser and account baskets have the same products/variants and quantities. */
+export function cartsAreEquivalent(local: CartItem[], backendLines: BackendCartLine[]) {
+  const localSig = normalizeCartSignature(
+    cartItemsToSyncPayload(local).map((row) => ({
+      product: row.product ?? null,
+      variant: row.variant ?? null,
+      quantity: row.quantity,
+    }))
+  );
+  const backendSig = normalizeCartSignature(
+    backendLines.map((line) => ({
+      product: line.product,
+      variant: line.variant,
+      quantity: line.quantity,
+    }))
+  );
+
+  if (localSig.length !== backendSig.length) {
+    return false;
+  }
+
+  return localSig.every(
+    (line, index) =>
+      line.key === backendSig[index]?.key && line.quantity === backendSig[index]?.quantity
+  );
+}

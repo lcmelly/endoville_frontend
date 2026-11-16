@@ -143,7 +143,8 @@ function SignupPageContent() {
           try {
             const loginResponse = await googleLogin({ access_token: response.access_token });
             setAuth(loginResponse);
-            redirectAfterAuth();
+            const params = new URLSearchParams(window.location.search);
+            router.push(getSafeNextPath(params.get("next")));
           } catch (err) {
             setError(getErrorMessage(err, "Google signup failed."));
           } finally {
@@ -169,8 +170,7 @@ function SignupPageContent() {
     script.dataset.googleIdentity = "true";
     script.onload = initializeClient;
     document.body.appendChild(script);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- init Google once; nextPath updates remount/re-init via dep
-  }, [getErrorMessage, nextPath, setAuth]);
+  }, [getErrorMessage, router, setAuth]);
 
   const handleGoogleSignup = () => {
     setError(null);

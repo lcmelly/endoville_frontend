@@ -18,6 +18,7 @@ import type { CartItem } from "@/lib/cart/types";
 import {
   backendLinesToCartItems,
   cartItemsToSyncPayload,
+  cartsAreEquivalent,
   hasAnyLine,
   mergeLocalAndBackendLines,
   type BackendCartResponse,
@@ -158,6 +159,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       if (localNonEmpty && !backendNonEmpty) {
         const res = await syncCart(cartItemsToSyncPayload(local));
         await hydrateFromServer(products, res);
+        return;
+      }
+      // Same contents — no merge UI needed.
+      if (cartsAreEquivalent(local, backend.items)) {
+        await hydrateFromServer(products, backend);
         return;
       }
       setMergeState({ backend, localSnapshot: local, products });
