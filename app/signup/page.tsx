@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { activateUser, googleLogin, registerUser, sendOtp } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
+import { getSafeNextPath, withNextParam } from "@/lib/auth-redirect";
 import { useEndovilleBrandAssets } from "@/lib/brand-assets";
 import { useAuth } from "@/lib/state/auth-context";
 
@@ -25,11 +26,15 @@ declare global {
   }
 }
 
-export default function SignupPage() {
+function SignupPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth } = useAuth();
   const { hero1Url } = useEndovilleBrandAssets();
   const tokenClientRef = useRef<{ requestAccessToken: () => void } | null>(null);
+  const nextPath = getSafeNextPath(searchParams.get("next"));
+  const redirectAfterAuth = () => router.push(nextPath);
+  const loginHref = withNextParam("/login", searchParams.get("next"));
   const [step, setStep] = useState<"register" | "activate">("register");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -72,7 +77,7 @@ export default function SignupPage() {
     try {
       const response = await activateUser({ email, otp });
       setStatus(response.message);
-      router.push("/login");
+      router.push(loginHref);
     } catch (err) {
       setError(getErrorMessage(err, "Activation failed."));
     } finally {
@@ -138,7 +143,7 @@ export default function SignupPage() {
           try {
             const loginResponse = await googleLogin({ access_token: response.access_token });
             setAuth(loginResponse);
-            router.push("/");
+            redirectAfterAuth();
           } catch (err) {
             setError(getErrorMessage(err, "Google signup failed."));
           } finally {
@@ -164,7 +169,8 @@ export default function SignupPage() {
     script.dataset.googleIdentity = "true";
     script.onload = initializeClient;
     document.body.appendChild(script);
-  }, [getErrorMessage, router, setAuth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init Google once; nextPath updates remount/re-init via dep
+  }, [getErrorMessage, nextPath, setAuth]);
 
   const handleGoogleSignup = () => {
     setError(null);
@@ -382,7 +388,7 @@ export default function SignupPage() {
 
               <div className="text-center text-sm text-gray-600">
                 Already have an account?{" "}
-                <Link href="/login" className="text-[#4C1C59] font-semibold">
+                <Link href={loginHref} className="text-[#4C1C59] font-semibold">
                   Log in
                 </Link>
               </div>
@@ -400,5 +406,13 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageContent />
+    </Suspense>
   );
 }

@@ -317,7 +317,7 @@ export default function BasketPage() {
 
   const goToCheckout = () => {
     if (!isAuthenticated) {
-      router.push("/login");
+      router.push("/login?next=/basket");
       return;
     }
     setStep("shipping");

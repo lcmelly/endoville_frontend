@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   activateUser,
   googleLogin,
@@ -12,6 +12,7 @@ import {
   sendOtp,
 } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
+import { getSafeNextPath, withNextParam } from "@/lib/auth-redirect";
 import { useAuth } from "@/lib/state/auth-context";
 import { useEndovilleBrandAssets } from "@/lib/brand-assets";
 
@@ -31,11 +32,14 @@ declare global {
   }
 }
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth } = useAuth();
   const { hero2Url } = useEndovilleBrandAssets();
   const tokenClientRef = useRef<{ requestAccessToken: () => void } | null>(null);
+  const nextPath = getSafeNextPath(searchParams.get("next"));
+  const redirectAfterAuth = () => router.push(nextPath);
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [loginMethod, setLoginMethod] = useState<"password" | "otp">("password");
   const [email, setEmail] = useState("");
@@ -146,7 +150,7 @@ export default function LoginPage() {
           try {
             const loginResponse = await googleLogin({ access_token: response.access_token });
             setAuth(loginResponse);
-            router.push("/");
+            redirectAfterAuth();
           } catch (err) {
             setError(getErrorMessage(err, "Google login failed."));
           } finally {
@@ -172,7 +176,8 @@ export default function LoginPage() {
     script.dataset.googleIdentity = "true";
     script.onload = initializeClient;
     document.body.appendChild(script);
-  }, [getErrorMessage, router, setAuth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init Google once; redirect uses latest nextPath via closure refresh on remount
+  }, [getErrorMessage, nextPath, setAuth]);
 
   const handleSendOtp = async () => {
     setError(null);
@@ -213,7 +218,7 @@ export default function LoginPage() {
     try {
       const response = await loginUser({ email, password });
       setAuth(response);
-      router.push("/");
+      redirectAfterAuth();
     } catch (err) {
       if (isInactiveAccountError(err)) {
         await startActivationRecovery();
@@ -236,7 +241,7 @@ export default function LoginPage() {
       if (loginMethod === "password" && password) {
         const response = await loginUser({ email, password });
         setAuth(response);
-        router.push("/");
+        redirectAfterAuth();
         return;
       }
       setStatus("Account activated. Sign in with your password or request a login code.");
@@ -267,7 +272,7 @@ export default function LoginPage() {
     try {
       const response = await loginUser({ email, otp });
       setAuth(response);
-      router.push("/");
+      redirectAfterAuth();
     } catch (err) {
       setError(getErrorMessage(err, "Login failed."));
     } finally {
@@ -521,7 +526,10 @@ export default function LoginPage() {
 
               <div className="text-center text-sm text-gray-600">
                 Don&apos;t have an account?{" "}
-                <Link href="/signup" className="text-[#4C1C59] font-semibold">
+                <Link
+                  href={withNextParam("/signup", searchParams.get("next"))}
+                  className="text-[#4C1C59] font-semibold"
+                >
                   Sign up
                 </Link>
               </div>
@@ -539,5 +547,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
