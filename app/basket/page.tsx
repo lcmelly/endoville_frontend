@@ -17,14 +17,13 @@ import { cartItemsToSyncPayload } from "@/lib/cart/sync-utils";
 import { useOrdersApi } from "@/lib/api/orders";
 import { usePaymentsApi } from "@/lib/api/payments";
 import { useCurrenciesQuery, useProductsQuery, useSubcategoriesQuery } from "@/lib/api/products";
-import { useShippingQuoteQuery } from "@/lib/api/shipping";
+import { estimateShippingFromWeight, useShippingRatesQuery } from "@/lib/api/shipping";
 import ProductCard from "@/components/product-card";
 import { formatOrderMoney } from "@/lib/currency-display";
 import { useAuth } from "@/lib/state/auth-context";
 import { useToast } from "@/lib/state/toast-context";
 import { useLocation, type LocationOption } from "@/lib/state/location-context";
 import { cn } from "@/lib/utils";
-import { ApiError } from "@/lib/api/client";
 
 const getRatingValue = (rating: string | null) => {
   const value = Number(rating ?? 0);
@@ -150,19 +149,26 @@ export default function BasketPage() {
     [items, productsById]
   );
 
-  const quoteItems = useMemo(() => cartItemsToSyncPayload(items), [items]);
   const shippingCountry = shipping.country.trim() || (location === "Kenya" ? "Kenya" : "USA");
-  const {
-    data: shippingQuote,
-    isLoading: shippingQuoteLoading,
-    isError: shippingQuoteFailed,
-    error: shippingQuoteError,
-  } = useShippingQuoteQuery(shippingCountry, quoteItems);
+  const { data: shippingRates, isLoading: shippingRatesLoading } = useShippingRatesQuery();
 
-  const shippingFeeUsd = useMemo(() => {
-    const value = Number(shippingQuote?.shipping_fee ?? NaN);
-    return Number.isFinite(value) ? value : null;
-  }, [shippingQuote?.shipping_fee]);
+  const cartWeightGrams = useMemo(
+    () =>
+      items.reduce((total, item) => {
+        const product = productsById.get(item.product.id) ?? item.product;
+        const unitWeight = Number(product.unit_weight ?? 0);
+        const safeWeight = Number.isFinite(unitWeight) && unitWeight > 0 ? unitWeight : 0;
+        return total + safeWeight * item.quantity;
+      }, 0),
+    [items, productsById]
+  );
+
+  const shippingEstimate = useMemo(
+    () => estimateShippingFromWeight(shippingRates, shippingCountry, cartWeightGrams),
+    [cartWeightGrams, shippingCountry, shippingRates]
+  );
+
+  const shippingFeeUsd = shippingEstimate.feeUsd;
 
   const shippingFeeLocal = useMemo(() => {
     if (shippingFeeUsd === null) {
@@ -179,29 +185,11 @@ export default function BasketPage() {
   }, [currencies, location, shippingFeeUsd]);
 
   const shippingFeeLabel = useMemo(() => {
-    if (shippingQuoteLoading) {
+    if (shippingRatesLoading) {
       return "Estimating…";
     }
-    if (shippingQuoteFailed) {
-      const data = shippingQuoteError instanceof ApiError ? shippingQuoteError.data : null;
-      if (data && typeof data === "object") {
-        const detail =
-          "detail" in data && typeof data.detail === "string"
-            ? data.detail
-            : "non_field_errors" in data &&
-                Array.isArray(data.non_field_errors) &&
-                typeof data.non_field_errors[0] === "string"
-              ? data.non_field_errors[0]
-              : "country" in data &&
-                  Array.isArray(data.country) &&
-                  typeof data.country[0] === "string"
-                ? data.country[0]
-                : null;
-        if (detail) {
-          return detail;
-        }
-      }
-      return "Unavailable";
+    if (shippingEstimate.error) {
+      return shippingEstimate.error;
     }
     if (shippingFeeUsd === null) {
       return "Unavailable";
@@ -217,10 +205,9 @@ export default function BasketPage() {
   }, [
     currencies,
     location,
+    shippingEstimate.error,
     shippingFeeUsd,
-    shippingQuoteError,
-    shippingQuoteFailed,
-    shippingQuoteLoading,
+    shippingRatesLoading,
   ]);
 
   const totals = useMemo(() => {
@@ -893,12 +880,15 @@ export default function BasketPage() {
                     Shipping
                     <span className="mt-0.5 block text-xs font-normal text-gray-400">
                       to {shippingCountry}
+                      {cartWeightGrams > 0
+                        ? ` · ${(cartWeightGrams / 1000).toFixed(2)} kg`
+                        : ""}
                     </span>
                   </span>
                   <span
                     className={cn(
                       "text-right font-semibold",
-                      shippingQuoteFailed
+                      shippingEstimate.error
                         ? "text-amber-700"
                         : shippingFeeUsd === 0
                           ? "text-[#0A6B3C]"

@@ -46,6 +46,7 @@ const stubProductFromLine = (line: BackendCartLine, productId: number): Product 
   display_currency: "",
   currency_symbol: "",
   stock: 0,
+  unit_weight: null,
   sku: null,
   barcode: line.barcode || null,
   image_urls: [],
