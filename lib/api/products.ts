@@ -81,6 +81,8 @@ export type Product = {
   display_currency: string;
   currency_symbol: string;
   stock: number;
+  /** Weight of one unit in grams. Defaults to 1 on the API when omitted. */
+  unit_weight?: number | null;
   sku: string | null;
   barcode: string | null;
   image_urls: string[];

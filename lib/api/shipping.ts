@@ -6,11 +6,11 @@ import type { OrderItemPayload } from "@/lib/api/orders";
 
 export type ShippingCountryRate = {
   country: string;
-  per_kg: string;
+  unit_weight: number;
+  fee: string;
 };
 
 export type ShippingRatesSchedule = {
-  base_fee: string;
   countries: ShippingCountryRate[];
 };
 
@@ -28,8 +28,6 @@ export type ShippingQuoteResponse = {
 export type ShippingEstimate = {
   feeUsd: number | null;
   weightGrams: number;
-  baseFeeUsd: number;
-  perKgUsd: number | null;
   error: string | null;
 };
 
@@ -70,9 +68,12 @@ export const useShippingQuoteQuery = (
 };
 
 /**
- * Shipping fee (USD) = base_fee + (weight_kg × country per_kg).
- * `unit_weight` on products is grams.
- * If no countries are configured, only the base fee applies.
+ * Client-side estimate matching GET /api/orders/shipping-rates/:
+ * - unit_weight is grams; fee is USD for that many grams
+ * - at or below unit weight → pay the unit fee
+ * - heavier → (weight_grams ÷ unit_weight) × fee
+ * - empty schedule → 0.00; unknown country → "Shipping to this country is not set."
+ * Prefer POST /shipping-rates/quote/ when a live quote is available.
  */
 export const estimateShippingFromWeight = (
   schedule: ShippingRatesSchedule | undefined,
@@ -81,15 +82,11 @@ export const estimateShippingFromWeight = (
 ): ShippingEstimate => {
   const normalizedCountry = country.trim();
   const safeWeight = Number.isFinite(weightGrams) && weightGrams > 0 ? weightGrams : 0;
-  const baseFeeUsd = Number(schedule?.base_fee ?? NaN);
-  const safeBase = Number.isFinite(baseFeeUsd) ? baseFeeUsd : 0;
 
   if (!schedule) {
     return {
       feeUsd: null,
       weightGrams: safeWeight,
-      baseFeeUsd: safeBase,
-      perKgUsd: null,
       error: null,
     };
   }
@@ -97,10 +94,8 @@ export const estimateShippingFromWeight = (
   const countries = schedule.countries ?? [];
   if (countries.length === 0) {
     return {
-      feeUsd: Number(safeBase.toFixed(2)),
+      feeUsd: 0,
       weightGrams: safeWeight,
-      baseFeeUsd: safeBase,
-      perKgUsd: 0,
       error: null,
     };
   }
@@ -113,22 +108,59 @@ export const estimateShippingFromWeight = (
     return {
       feeUsd: null,
       weightGrams: safeWeight,
-      baseFeeUsd: safeBase,
-      perKgUsd: null,
       error: "Shipping to this country is not set.",
     };
   }
 
-  const perKgUsd = Number(match.per_kg ?? NaN);
-  const safePerKg = Number.isFinite(perKgUsd) ? perKgUsd : 0;
-  const weightKg = safeWeight / 1000;
-  const feeUsd = Number((safeBase + weightKg * safePerKg).toFixed(2));
+  const unitWeight = Number(match.unit_weight);
+  const unitFee = Number(match.fee);
+  if (!Number.isFinite(unitWeight) || unitWeight < 1 || !Number.isFinite(unitFee) || unitFee < 0) {
+    return {
+      feeUsd: null,
+      weightGrams: safeWeight,
+      error: "Shipping to this country is not set.",
+    };
+  }
+
+  const feeUsd = safeWeight <= unitWeight ? unitFee : (safeWeight / unitWeight) * unitFee;
 
   return {
-    feeUsd,
+    feeUsd: Number(feeUsd.toFixed(2)),
     weightGrams: safeWeight,
-    baseFeeUsd: safeBase,
-    perKgUsd: safePerKg,
+    error: null,
+  };
+};
+
+export const shippingEstimateFromQuote = (
+  quote: ShippingQuoteResponse | undefined,
+  quoteErrorMessage?: string | null
+): ShippingEstimate | null => {
+  if (quoteErrorMessage) {
+    return {
+      feeUsd: null,
+      weightGrams: 0,
+      error: quoteErrorMessage,
+    };
+  }
+
+  if (!quote) {
+    return null;
+  }
+
+  const feeUsd = Number(quote.shipping_fee);
+  const weightGrams = Number(quote.weight_grams);
+
+  if (!Number.isFinite(feeUsd) || feeUsd < 0) {
+    return {
+      feeUsd: null,
+      weightGrams: Number.isFinite(weightGrams) ? weightGrams : 0,
+      error: "Unable to estimate shipping.",
+    };
+  }
+
+  return {
+    feeUsd: Number(feeUsd.toFixed(2)),
+    weightGrams: Number.isFinite(weightGrams) && weightGrams > 0 ? weightGrams : 0,
     error: null,
   };
 };

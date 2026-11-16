@@ -59,7 +59,7 @@ export default function RootLayout({
             <Suspense fallback={null}>
               <Navbar />
             </Suspense>
-            <div className="pt-[140px]">{children}</div>
+            <div className="pt-[160px] md:pt-[156px]">{children}</div>
           </AnimatedBackground>
           <Footer />
           <CookieConsent />

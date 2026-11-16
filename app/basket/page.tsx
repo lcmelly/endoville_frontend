@@ -17,7 +17,12 @@ import { cartItemsToSyncPayload } from "@/lib/cart/sync-utils";
 import { useOrdersApi } from "@/lib/api/orders";
 import { usePaymentsApi } from "@/lib/api/payments";
 import { useCurrenciesQuery, useProductsQuery, useSubcategoriesQuery } from "@/lib/api/products";
-import { estimateShippingFromWeight, useShippingRatesQuery } from "@/lib/api/shipping";
+import {
+  estimateShippingFromWeight,
+  shippingEstimateFromQuote,
+  useShippingQuoteQuery,
+  useShippingRatesQuery,
+} from "@/lib/api/shipping";
 import ProductCard from "@/components/product-card";
 import { formatOrderMoney } from "@/lib/currency-display";
 import { useAuth } from "@/lib/state/auth-context";
@@ -161,6 +166,14 @@ function BasketPageContent() {
   const shippingCountry = shipping.country.trim() || (location === "Kenya" ? "Kenya" : "USA");
   const { data: shippingRates, isLoading: shippingRatesLoading } = useShippingRatesQuery();
 
+  const quoteItems = useMemo(() => cartItemsToSyncPayload(items), [items]);
+  const {
+    data: shippingQuote,
+    isLoading: shippingQuoteLoading,
+    isError: shippingQuoteFailed,
+    error: shippingQuoteError,
+  } = useShippingQuoteQuery(shippingCountry, quoteItems);
+
   const cartWeightGrams = useMemo(
     () =>
       items.reduce((total, item) => {
@@ -172,12 +185,44 @@ function BasketPageContent() {
     [items, productsById]
   );
 
-  const shippingEstimate = useMemo(
+  const localShippingEstimate = useMemo(
     () => estimateShippingFromWeight(shippingRates, shippingCountry, cartWeightGrams),
     [cartWeightGrams, shippingCountry, shippingRates]
   );
 
+  const quoteErrorMessage = useMemo(() => {
+    if (!shippingQuoteFailed) {
+      return null;
+    }
+    const data =
+      shippingQuoteError &&
+      typeof shippingQuoteError === "object" &&
+      "data" in shippingQuoteError
+        ? (shippingQuoteError as { data: unknown }).data
+        : null;
+    const detail =
+      data && typeof data === "object" && data !== null && "detail" in data
+        ? String((data as { detail: unknown }).detail ?? "")
+        : data && typeof data === "object" && data !== null && "country" in data
+          ? String((data as { country: unknown }).country ?? "")
+          : shippingQuoteError instanceof Error
+            ? shippingQuoteError.message
+            : String(shippingQuoteError ?? "");
+    if (/Shipping to this country is not set/i.test(detail)) {
+      return "Shipping to this country is not set.";
+    }
+    return null;
+  }, [shippingQuoteError, shippingQuoteFailed]);
+
+  const quoteEstimate = useMemo(
+    () => shippingEstimateFromQuote(shippingQuote, quoteErrorMessage),
+    [quoteErrorMessage, shippingQuote]
+  );
+
+  const shippingEstimate = quoteEstimate ?? localShippingEstimate;
   const shippingFeeUsd = shippingEstimate.feeUsd;
+  const displayWeightGrams =
+    shippingEstimate.weightGrams > 0 ? shippingEstimate.weightGrams : cartWeightGrams;
 
   const shippingFeeLocal = useMemo(() => {
     if (shippingFeeUsd === null) {
@@ -194,7 +239,7 @@ function BasketPageContent() {
   }, [currencies, location, shippingFeeUsd]);
 
   const shippingFeeLabel = useMemo(() => {
-    if (shippingRatesLoading) {
+    if ((shippingQuoteLoading || shippingRatesLoading) && shippingFeeUsd === null) {
       return "Estimating…";
     }
     if (shippingEstimate.error) {
@@ -216,6 +261,7 @@ function BasketPageContent() {
     location,
     shippingEstimate.error,
     shippingFeeUsd,
+    shippingQuoteLoading,
     shippingRatesLoading,
   ]);
 
@@ -979,8 +1025,12 @@ function BasketPageContent() {
                     Shipping
                     <span className="mt-0.5 block text-xs font-normal text-gray-400">
                       to {shippingCountry}
-                      {cartWeightGrams > 0
-                        ? ` · ${(cartWeightGrams / 1000).toFixed(2)} kg`
+                      {displayWeightGrams > 0
+                        ? ` · ${
+                            displayWeightGrams >= 1000
+                              ? `${(displayWeightGrams / 1000).toFixed(2)} kg`
+                              : `${Math.round(displayWeightGrams)} g`
+                          }`
                         : ""}
                     </span>
                   </span>

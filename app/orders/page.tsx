@@ -116,7 +116,7 @@ function OrdersPageContent() {
 
   if (!isAuthenticated) {
     return (
-      <main className="container mx-auto px-4 py-16">
+      <main className="container mx-auto px-4 pb-16 pt-12 md:pt-16">
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-sm text-gray-600">
           <p>Please sign in or create an account to view your orders.</p>
           <div className="mt-4 flex justify-center gap-3">
@@ -139,12 +139,12 @@ function OrdersPageContent() {
   }
 
   return (
-    <main className="container mx-auto px-4 py-16">
-      <div className="mb-8 flex items-center justify-between">
+    <main className="container mx-auto px-4 pb-16 pt-12 md:pt-16">
+      <div className="mb-8 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">My Orders</h1>
         <Link
           href="/products"
-          className="text-sm font-semibold text-[#4C1C59] hover:text-[#361340]"
+          className="shrink-0 text-sm font-semibold text-[#4C1C59] hover:text-[#361340]"
         >
           Continue shopping
         </Link>
@@ -405,7 +405,7 @@ function OrdersPageContent() {
 
 function OrdersPageFallback() {
   return (
-    <main className="container mx-auto px-4 py-16">
+    <main className="container mx-auto px-4 pb-16 pt-12 md:pt-16">
       <div className="space-y-6">
         {Array.from({ length: 3 }).map((_, index) => (
           <div
