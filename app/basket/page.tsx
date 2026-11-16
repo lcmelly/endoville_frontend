@@ -23,6 +23,12 @@ import { formatOrderMoney } from "@/lib/currency-display";
 import { useAuth } from "@/lib/state/auth-context";
 import { useToast } from "@/lib/state/toast-context";
 import { useLocation, type LocationOption } from "@/lib/state/location-context";
+import {
+  normalizeShippingAddress,
+  readPreferredShippingAddress,
+  shippingAddressHasContent,
+  writePreferredShippingAddress,
+} from "@/lib/shipping-address";
 import { cn } from "@/lib/utils";
 
 const getRatingValue = (rating: string | null) => {
@@ -122,6 +128,7 @@ function BasketPageContent() {
     ...initialShipping,
     country: location === "Kenya" ? "Kenya" : "USA",
   }));
+  const [shippingHydrated, setShippingHydrated] = useState(false);
   const isAuthenticated = Boolean(auth?.user);
   const deliveryEstimate = getDeliveryEstimate(location);
   const estimateWindow = formatEstimateWindow(location);
@@ -294,6 +301,82 @@ function BasketPageContent() {
   }, [location]);
 
   useEffect(() => {
+    setShippingHydrated(false);
+  }, [auth?.user?.id]);
+
+  useEffect(() => {
+    if (authLoading || shippingHydrated) {
+      return;
+    }
+
+    const fallbackCountry = location === "Kenya" ? "Kenya" : "USA";
+    const user = auth?.user;
+
+    if (!user) {
+      setShippingHydrated(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrateShipping = async () => {
+      const preferred = readPreferredShippingAddress(user.id);
+      let next = preferred;
+
+      if (!shippingAddressHasContent(next)) {
+        try {
+          const orders = await getOrders();
+          if (cancelled) {
+            return;
+          }
+          const latestWithAddress = [...orders]
+            .sort(
+              (a, b) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )
+            .find((order) => order.shipping_address);
+          if (latestWithAddress?.shipping_address) {
+            next = normalizeShippingAddress(
+              latestWithAddress.shipping_address,
+              fallbackCountry
+            );
+          }
+        } catch {
+          // Fall through to profile defaults.
+        }
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      setShipping((prev) =>
+        normalizeShippingAddress(
+          {
+            ...prev,
+            ...next,
+            full_name:
+              next?.full_name ||
+              [user.first_name, user.last_name].filter(Boolean).join(" ").trim() ||
+              prev.full_name,
+            phone: next?.phone || user.phone || prev.phone,
+            email: next?.email || user.email || prev.email,
+            country: fallbackCountry,
+          },
+          fallbackCountry
+        )
+      );
+      setShippingHydrated(true);
+    };
+
+    void hydrateShipping();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.user, authLoading, getOrders, location, shippingHydrated]);
+
+  useEffect(() => {
     if (auth?.user?.email && !shipping.email) {
       setShipping((prev) => ({ ...prev, email: auth.user?.email ?? prev.email }));
     }
@@ -386,6 +469,12 @@ function BasketPageContent() {
       });
 
       const order = matchingOrder ?? (await placeOrder(orderPayload));
+      if (auth?.user?.id) {
+        writePreferredShippingAddress(
+          auth.user.id,
+          normalizeShippingAddress(shipping, shipping.country)
+        );
+      }
       const origin = window.location.origin;
       const isKenya = location === "Kenya";
       const isMpesaPayment = isKenya && paymentMethod === "mpesa";

@@ -1,9 +1,19 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { deleteImageFromFirebase, uploadImageToFirebase } from "@/lib/firebase-storage";
 import { useAuth } from "@/lib/state/auth-context";
+import { useOrdersApi } from "@/lib/api/orders";
 import { UpdateUserProfilePayload, UserProfile, useUserApi } from "@/lib/api/users";
+import {
+  emptyShippingAddress,
+  normalizeShippingAddress,
+  PreferredShippingAddress,
+  readPreferredShippingAddress,
+  shippingAddressHasContent,
+  writePreferredShippingAddress,
+} from "@/lib/shipping-address";
+import { useLocation } from "@/lib/state/location-context";
 
 const genderOptions = [
   { value: "", label: "Select gender" },
@@ -13,15 +23,29 @@ const genderOptions = [
   { value: "N", label: "Prefer not to say" },
 ];
 
+const countryOptions = [
+  { value: "USA", label: "United States" },
+  { value: "Kenya", label: "Kenya" },
+];
+
+const shippingFieldClassName =
+  "h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900";
+
 export default function AccountPage() {
   const { auth, authLoading } = useAuth();
   const { getMe, updateMe } = useUserApi();
+  const { getOrders } = useOrdersApi();
+  const { location } = useLocation();
+  const defaultCountryRef = useRef(location === "Kenya" ? "Kenya" : "USA");
   const isAuthenticated = Boolean(auth?.user);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingShipping, setSavingShipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [shippingError, setShippingError] = useState<string | null>(null);
+  const [shippingSuccess, setShippingSuccess] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -32,6 +56,13 @@ export default function AccountPage() {
   const [imagePreview, setImagePreview] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
+
+  const [shipping, setShipping] = useState<PreferredShippingAddress>(() =>
+    emptyShippingAddress({ country: location === "Kenya" ? "Kenya" : "USA" })
+  );
+  const [savedShipping, setSavedShipping] = useState<PreferredShippingAddress | null>(
+    null
+  );
 
   useEffect(() => {
     if (authLoading) {
@@ -47,6 +78,7 @@ export default function AccountPage() {
     let isMounted = true;
     const loadProfile = async () => {
       setError(null);
+      setShippingError(null);
       try {
         const data = await getMe();
         if (!isMounted) {
@@ -60,6 +92,53 @@ export default function AccountPage() {
         setImageUrl(data.image_url ?? "");
         setImageRef(data.image_ref ?? "");
         setImagePreview(data.image_url ?? "");
+
+        const fallbackCountry = defaultCountryRef.current;
+        const preferred = readPreferredShippingAddress(data.id);
+        let nextShipping = preferred;
+
+        if (!shippingAddressHasContent(nextShipping)) {
+          try {
+            const orders = await getOrders();
+            const latestWithAddress = [...orders]
+              .sort(
+                (a, b) =>
+                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )
+              .find((order) => order.shipping_address);
+
+            if (latestWithAddress?.shipping_address) {
+              nextShipping = normalizeShippingAddress(
+                latestWithAddress.shipping_address,
+                fallbackCountry
+              );
+            }
+          } catch {
+            // Keep preferred/profile defaults if order history is unavailable.
+          }
+        }
+
+        const profileDefaults = emptyShippingAddress({
+          full_name: [data.first_name, data.last_name].filter(Boolean).join(" ").trim(),
+          phone: data.phone ?? "",
+          email: data.email ?? "",
+          country: fallbackCountry,
+        });
+
+        const resolved = normalizeShippingAddress(
+          {
+            ...profileDefaults,
+            ...nextShipping,
+            full_name: nextShipping?.full_name || profileDefaults.full_name,
+            phone: nextShipping?.phone || profileDefaults.phone,
+            email: nextShipping?.email || profileDefaults.email,
+            country: nextShipping?.country || profileDefaults.country,
+          },
+          fallbackCountry
+        );
+
+        setShipping(resolved);
+        setSavedShipping(resolved);
       } catch (err) {
         if (isMounted) {
           setError("Unable to load account details.");
@@ -75,7 +154,7 @@ export default function AccountPage() {
     return () => {
       isMounted = false;
     };
-  }, [authLoading, getMe, isAuthenticated]);
+  }, [authLoading, getMe, getOrders, isAuthenticated]);
 
   const canEdit = isAuthenticated;
 
@@ -196,6 +275,76 @@ export default function AccountPage() {
     }
   };
 
+  const hasShippingChanges = useMemo(() => {
+    if (!savedShipping) {
+      return shippingAddressHasContent(shipping);
+    }
+    return (
+      shipping.full_name !== savedShipping.full_name ||
+      shipping.phone !== savedShipping.phone ||
+      shipping.email !== savedShipping.email ||
+      shipping.address_line_1 !== savedShipping.address_line_1 ||
+      shipping.address_line_2 !== (savedShipping.address_line_2 ?? "") ||
+      shipping.city !== savedShipping.city ||
+      shipping.state !== (savedShipping.state ?? "") ||
+      shipping.postal_code !== (savedShipping.postal_code ?? "") ||
+      shipping.country !== savedShipping.country
+    );
+  }, [savedShipping, shipping]);
+
+  const handleShippingChange = (
+    field: keyof PreferredShippingAddress,
+    value: string
+  ) => {
+    setShipping((prev) => ({ ...prev, [field]: value }));
+    if (shippingError) {
+      setShippingError(null);
+    }
+    if (shippingSuccess) {
+      setShippingSuccess(null);
+    }
+  };
+
+  const handleShippingSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setShippingError(null);
+    setShippingSuccess(null);
+
+    if (!canEdit || !profile) {
+      setShippingError("You must be logged in to update your shipping address.");
+      return;
+    }
+
+    const required: Array<keyof PreferredShippingAddress> = [
+      "full_name",
+      "phone",
+      "email",
+      "address_line_1",
+      "city",
+      "state",
+      "postal_code",
+      "country",
+    ];
+    const missing = required.filter((field) => !String(shipping[field] ?? "").trim());
+    if (missing.length > 0) {
+      setShippingError("Please fill in all required shipping fields.");
+      return;
+    }
+
+    setSavingShipping(true);
+    try {
+      const normalized = normalizeShippingAddress(shipping);
+      writePreferredShippingAddress(profile.id, normalized);
+      setShipping(normalized);
+      setSavedShipping(normalized);
+      setShippingSuccess("Shipping address saved.");
+    } catch {
+      setShippingError("Unable to save shipping address.");
+    } finally {
+      setSavingShipping(false);
+    }
+  };
+
   if (loading) {
     return (
       <main className="container mx-auto px-4 pb-16 pt-10">
@@ -249,7 +398,7 @@ export default function AccountPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My account</h1>
             <p className="mt-2 text-sm text-gray-600">
-              Manage your profile information and profile image.
+              Manage your profile, photo, and shipping address.
             </p>
           </div>
           {profile && (
@@ -378,6 +527,155 @@ export default function AccountPage() {
               className="rounded-lg bg-[#4C1C59] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#361340] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-[#4C1C59]/10 bg-white/80 p-6 shadow-sm backdrop-blur">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">Shipping address</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Used to prefill checkout. Update it anytime before your next order.
+          </p>
+        </div>
+
+        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleShippingSubmit}>
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-full-name">
+              Full name
+            </label>
+            <input
+              id="shipping-full-name"
+              value={shipping.full_name}
+              onChange={(event) => handleShippingChange("full_name", event.target.value)}
+              className={shippingFieldClassName}
+              autoComplete="name"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-phone">
+              Phone
+            </label>
+            <input
+              id="shipping-phone"
+              value={shipping.phone}
+              onChange={(event) => handleShippingChange("phone", event.target.value)}
+              className={shippingFieldClassName}
+              autoComplete="tel"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-email">
+              Email
+            </label>
+            <input
+              id="shipping-email"
+              type="email"
+              value={shipping.email}
+              onChange={(event) => handleShippingChange("email", event.target.value)}
+              className={shippingFieldClassName}
+              autoComplete="email"
+            />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-line-1">
+              Address line 1
+            </label>
+            <input
+              id="shipping-line-1"
+              value={shipping.address_line_1}
+              onChange={(event) =>
+                handleShippingChange("address_line_1", event.target.value)
+              }
+              className={shippingFieldClassName}
+              autoComplete="address-line1"
+            />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-line-2">
+              Address line 2
+            </label>
+            <input
+              id="shipping-line-2"
+              value={shipping.address_line_2}
+              onChange={(event) =>
+                handleShippingChange("address_line_2", event.target.value)
+              }
+              className={shippingFieldClassName}
+              autoComplete="address-line2"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-city">
+              City
+            </label>
+            <input
+              id="shipping-city"
+              value={shipping.city}
+              onChange={(event) => handleShippingChange("city", event.target.value)}
+              className={shippingFieldClassName}
+              autoComplete="address-level2"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-state">
+              State / County
+            </label>
+            <input
+              id="shipping-state"
+              value={shipping.state}
+              onChange={(event) => handleShippingChange("state", event.target.value)}
+              className={shippingFieldClassName}
+              autoComplete="address-level1"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-postal">
+              Postal code
+            </label>
+            <input
+              id="shipping-postal"
+              value={shipping.postal_code}
+              onChange={(event) =>
+                handleShippingChange("postal_code", event.target.value)
+              }
+              className={shippingFieldClassName}
+              autoComplete="postal-code"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-600" htmlFor="shipping-country">
+              Country
+            </label>
+            <select
+              id="shipping-country"
+              value={shipping.country}
+              onChange={(event) => handleShippingChange("country", event.target.value)}
+              className={`${shippingFieldClassName} bg-white`}
+            >
+              {countryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {shippingError && (
+            <p className="text-sm text-red-600 md:col-span-2">{shippingError}</p>
+          )}
+          {shippingSuccess && (
+            <p className="text-sm text-green-600 md:col-span-2">{shippingSuccess}</p>
+          )}
+
+          <div className="flex flex-wrap gap-3 md:col-span-2">
+            <button
+              type="submit"
+              disabled={savingShipping || !hasShippingChanges}
+              className="rounded-lg bg-[#4C1C59] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#361340] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingShipping ? "Saving..." : "Save shipping address"}
             </button>
           </div>
         </form>
