@@ -2,8 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import ProductCard from "@/components/product-card";
 import { useProductsQuery } from "@/lib/api/products";
+import { cn } from "@/lib/utils";
+
+const carouselArrowClassName =
+  "absolute z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-colors hover:border-gray-300 hover:text-gray-900 lg:flex";
 
 const getRatingValue = (rating: string | null) => {
   const value = Number(rating ?? 0);
@@ -262,18 +267,20 @@ export default function FeaturedProducts() {
                   <button
                     type="button"
                     onClick={handlePrev}
-                    className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/90 p-3 text-gray-600 shadow-sm transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                    className={cn(carouselArrowClassName, "left-0 -translate-x-1/2")}
+                    style={{ top: cardWidth ? cardWidth * 0.88 : 180 }}
                     aria-label="Scroll top rated products left"
                   >
-                    ←
+                    <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
                   </button>
                   <button
                     type="button"
                     onClick={handleNext}
-                    className="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/90 p-3 text-gray-600 shadow-sm transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                    className={cn(carouselArrowClassName, "right-0 translate-x-1/2")}
+                    style={{ top: cardWidth ? cardWidth * 0.88 : 180 }}
                     aria-label="Scroll top rated products right"
                   >
-                    →
+                    <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
                   </button>
                 </>
               )}
@@ -347,23 +354,29 @@ export default function FeaturedProducts() {
             </div>
           ) : (
             <div className="relative">
-              {shouldUseNewArrivalsCarousel && (
+              {shouldUseNewArrivalsCarousel && hasMeasuredNewArrivals && (
                 <>
                   <button
                     type="button"
                     onClick={handleNewArrivalsPrev}
-                    className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/90 p-3 text-gray-600 shadow-sm transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                    className={cn(carouselArrowClassName, "left-0 -translate-x-1/2")}
+                    style={{
+                      top: newArrivalsCardWidth ? newArrivalsCardWidth * 0.88 : 180,
+                    }}
                     aria-label="Scroll new arrivals left"
                   >
-                    ←
+                    <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
                   </button>
                   <button
                     type="button"
                     onClick={handleNewArrivalsNext}
-                    className="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/90 p-3 text-gray-600 shadow-sm transition-colors hover:border-[#4C1C59]/40 hover:text-[#4C1C59]"
+                    className={cn(carouselArrowClassName, "right-0 translate-x-1/2")}
+                    style={{
+                      top: newArrivalsCardWidth ? newArrivalsCardWidth * 0.88 : 180,
+                    }}
                     aria-label="Scroll new arrivals right"
                   >
-                    →
+                    <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
                   </button>
                 </>
               )}
