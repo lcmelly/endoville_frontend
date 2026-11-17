@@ -1,6 +1,18 @@
 import type { ShippingAddressPayload } from "@/lib/api/orders";
 
-export type PreferredShippingAddress = ShippingAddressPayload;
+export type NormalizedShippingAddress = {
+  full_name: string;
+  phone: string;
+  email: string;
+  address_line_1: string;
+  address_line_2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+};
+
+export type PreferredShippingAddress = NormalizedShippingAddress;
 
 export const SHIPPING_ADDRESS_STORAGE_KEY = "endoville-shipping-address";
 export const SHIPPING_ADDRESS_UPDATED_EVENT = "shipping-address-updated";
@@ -10,36 +22,31 @@ const isBrowser = () => typeof window !== "undefined";
 const storageKeyForUser = (userId: number) =>
   `${SHIPPING_ADDRESS_STORAGE_KEY}:${userId}`;
 
-export const emptyShippingAddress = (
-  overrides: Partial<PreferredShippingAddress> = {}
-): PreferredShippingAddress => ({
-  full_name: "",
-  phone: "",
-  email: "",
-  address_line_1: "",
-  address_line_2: "",
-  city: "",
-  state: "",
-  postal_code: "",
-  country: "USA",
-  ...overrides,
+export const normalizeShippingAddress = (
+  value: Partial<ShippingAddressPayload> | null | undefined,
+  fallbackCountry = "USA"
+): NormalizedShippingAddress => ({
+  full_name: value?.full_name?.trim() ?? "",
+  phone: value?.phone?.trim() ?? "",
+  email: value?.email?.trim() ?? "",
+  address_line_1: value?.address_line_1?.trim() ?? "",
+  address_line_2: value?.address_line_2?.trim() ?? "",
+  city: value?.city?.trim() ?? "",
+  state: value?.state?.trim() ?? "",
+  postal_code: value?.postal_code?.trim() ?? "",
+  country: value?.country?.trim() || fallbackCountry,
 });
 
-export const normalizeShippingAddress = (
-  value: Partial<PreferredShippingAddress> | null | undefined,
-  fallbackCountry = "USA"
-): PreferredShippingAddress =>
-  emptyShippingAddress({
-    full_name: value?.full_name?.trim() ?? "",
-    phone: value?.phone?.trim() ?? "",
-    email: value?.email?.trim() ?? "",
-    address_line_1: value?.address_line_1?.trim() ?? "",
-    address_line_2: value?.address_line_2?.trim() ?? "",
-    city: value?.city?.trim() ?? "",
-    state: value?.state?.trim() ?? "",
-    postal_code: value?.postal_code?.trim() ?? "",
-    country: value?.country?.trim() || fallbackCountry,
-  });
+export const emptyShippingAddress = (
+  overrides: Partial<ShippingAddressPayload> = {}
+): NormalizedShippingAddress =>
+  normalizeShippingAddress(
+    {
+      country: "USA",
+      ...overrides,
+    },
+    overrides.country?.trim() || "USA"
+  );
 
 export const readPreferredShippingAddress = (
   userId: number | null | undefined
