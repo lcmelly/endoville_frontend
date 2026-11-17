@@ -123,7 +123,7 @@ function ReviewForm({
   onSaved,
 }: {
   productId: number;
-  orderId: number;
+  orderId: string;
   initial?: ProductReview | null;
   onCancel?: () => void;
   onSaved: () => void;

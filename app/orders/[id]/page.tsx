@@ -43,7 +43,7 @@ const paymentRecordTone = (status: string) => {
 
 function OrderDetailContent() {
   const params = useParams<{ id: string }>();
-  const orderId = Number(params.id);
+  const orderId = typeof params.id === "string" ? params.id : "";
   const searchParams = useSearchParams();
   const { auth, authLoading } = useAuth();
   const { getOrderById } = useOrdersApi();
@@ -83,7 +83,7 @@ function OrderDetailContent() {
       return;
     }
 
-    if (!isAuthenticated || !Number.isFinite(orderId)) {
+    if (!isAuthenticated || !orderId) {
       setLoading(false);
       return;
     }
@@ -234,6 +234,12 @@ function OrderDetailContent() {
                 </span>
               )}
             </p>
+            <Link
+              href={`/contact?order=${encodeURIComponent(order.id)}`}
+              className="mt-2 inline-block text-sm font-medium text-[#4C1C59] hover:text-[#361340]"
+            >
+              Ask about this order
+            </Link>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span

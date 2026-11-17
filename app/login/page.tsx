@@ -43,6 +43,7 @@ function LoginPageContent() {
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [loginMethod, setLoginMethod] = useState<"password" | "otp">("password");
   const [email, setEmail] = useState("");
+  const [otpSentTo, setOtpSentTo] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -185,9 +186,12 @@ function LoginPageContent() {
     setStatus(null);
     setLoading(true);
     try {
-      await requestLoginOtp({ email });
+      const response = await requestLoginOtp({ email });
+      const sentTo = (response.email || email).trim().toLowerCase();
+      setEmail(sentTo);
+      setOtpSentTo(sentTo);
       setStep("otp");
-      setStatus("OTP sent. Enter the 6-digit code to finish login.");
+      setStatus(`OTP sent to ${sentTo}. Enter the 6-digit code to finish login.`);
     } catch (err) {
       if (isInactiveAccountError(err)) {
         await startActivationRecovery();
@@ -205,6 +209,7 @@ function LoginPageContent() {
     setError(null);
     setStatus(null);
     setOtp("");
+    setOtpSentTo(null);
     setPendingActivation(false);
     setActivationOtp("");
     if (method === "otp") {
@@ -269,9 +274,17 @@ function LoginPageContent() {
   const handleOtpLogin = async () => {
     setError(null);
     setStatus(null);
+    const loginEmail = email.trim().toLowerCase();
+    if (!otpSentTo || loginEmail !== otpSentTo) {
+      setError("This code was sent to a different email. Request a new code for this address.");
+      setStep("credentials");
+      setOtp("");
+      setOtpSentTo(null);
+      return;
+    }
     setLoading(true);
     try {
-      const response = await loginUser({ email, otp });
+      const response = await loginUser({ email: loginEmail, otp });
       setAuth(response);
       redirectAfterAuth();
     } catch (err) {
@@ -338,7 +351,24 @@ function LoginPageContent() {
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  readOnly={step === "otp" || pendingActivation}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    if (
+                      otpSentTo &&
+                      next.trim().toLowerCase() !== otpSentTo &&
+                      (step === "otp" || pendingActivation)
+                    ) {
+                      setStep("credentials");
+                      setOtp("");
+                      setOtpSentTo(null);
+                      setPendingActivation(false);
+                      setActivationOtp("");
+                      setStatus(null);
+                      setError("Request a new code for this email.");
+                    }
+                    setEmail(next);
+                  }}
                   autoComplete="email"
                   className="flex h-11 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4C1C59] focus-visible:ring-offset-2"
                 />
@@ -367,6 +397,14 @@ function LoginPageContent() {
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
+                  </div>
+                  <div className="text-right">
+                    <Link
+                      href={email ? `/reset-password?email=${encodeURIComponent(email)}` : "/reset-password"}
+                      className="text-sm font-medium text-[#4C1C59] hover:text-[#361340]"
+                    >
+                      Forgot password?
+                    </Link>
                   </div>
                 </div>
               )}
@@ -451,7 +489,17 @@ function LoginPageContent() {
                 </div>
               )}
 
-,              {error && <p className="text-sm text-red-600">{error}</p>}
+              {step === "otp" && (
+                <button
+                  type="button"
+                  onClick={() => resetFlow("otp")}
+                  className="text-sm font-medium text-[#4C1C59] hover:text-[#361340]"
+                >
+                  Use a different email
+                </button>
+              )}
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
               {status && <p className="text-sm text-green-600">{status}</p>}
 
               {step === "credentials" ? (

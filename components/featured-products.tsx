@@ -1,14 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import ProductCard from "@/components/product-card";
 import { useProductsQuery } from "@/lib/api/products";
 import { cn } from "@/lib/utils";
 
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 const carouselArrowClassName =
   "absolute z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-colors hover:border-gray-300 hover:text-gray-900 lg:flex";
+
+const CAROUSEL_GAP_PX = 24;
+const NATIVE_SCROLL_PEEK_PX = 28;
+
+const trackClassName =
+  "w-full min-w-0 overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-2 [-webkit-overflow-scrolling:touch] lg:snap-none lg:overflow-hidden lg:pb-0";
+
+const getCardWidth = (containerWidth: number, count: number, nativeScroll: boolean) => {
+  if (containerWidth <= 0 || count <= 0) {
+    return 0;
+  }
+
+  if (nativeScroll) {
+    return Math.max(
+      0,
+      (containerWidth - CAROUSEL_GAP_PX * count - NATIVE_SCROLL_PEEK_PX) / count
+    );
+  }
+
+  return Math.max(0, (containerWidth - CAROUSEL_GAP_PX * (count - 1)) / count);
+};
 
 const getRatingValue = (rating: string | null) => {
   const value = Number(rating ?? 0);
@@ -45,7 +68,7 @@ export default function FeaturedProducts() {
   );
   const [cardWidth, setCardWidth] = useState(0);
   const [newArrivalsCardWidth, setNewArrivalsCardWidth] = useState(0);
-  const gapPx = 16;
+  const useNativeScroll = visibleCount < 4;
 
   const topRatedProducts = useMemo(
     () =>
@@ -143,7 +166,7 @@ export default function FeaturedProducts() {
     return () => window.removeEventListener("resize", updateVisibleCount);
   }, []);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!trackRef.current) {
       return;
     }
@@ -153,9 +176,7 @@ export default function FeaturedProducts() {
         return;
       }
       const containerWidth = trackRef.current.clientWidth;
-      const nextCardWidth =
-        (containerWidth - gapPx * (visibleCount - 1)) / visibleCount;
-      setCardWidth(nextCardWidth);
+      setCardWidth(getCardWidth(containerWidth, visibleCount, visibleCount < 4));
     };
 
     updateCardWidth();
@@ -165,7 +186,7 @@ export default function FeaturedProducts() {
     return () => observer.disconnect();
   }, [visibleCount, totalItems, isLoading]);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!newArrivalsTrackRef.current) {
       return;
     }
@@ -175,9 +196,9 @@ export default function FeaturedProducts() {
         return;
       }
       const containerWidth = newArrivalsTrackRef.current.clientWidth;
-      const nextCardWidth =
-        (containerWidth - gapPx * (visibleCount - 1)) / visibleCount;
-      setNewArrivalsCardWidth(nextCardWidth);
+      setNewArrivalsCardWidth(
+        getCardWidth(containerWidth, visibleCount, visibleCount < 4)
+      );
     };
 
     updateNewArrivalsCardWidth();
@@ -200,7 +221,7 @@ export default function FeaturedProducts() {
   }, [cardWidth, shouldUseCarousel]);
 
   useEffect(() => {
-    if (!shouldUseCarousel || cardWidth <= 0) {
+    if (!shouldUseCarousel || cardWidth <= 0 || useNativeScroll) {
       return;
     }
     if (timerRef.current) {
@@ -216,7 +237,7 @@ export default function FeaturedProducts() {
         clearInterval(timerRef.current);
       }
     };
-  }, [cardWidth, shouldUseCarousel]);
+  }, [cardWidth, shouldUseCarousel, useNativeScroll]);
 
   useEffect(() => {
     if (!shouldUseCarousel) {
@@ -262,7 +283,7 @@ export default function FeaturedProducts() {
             </div>
           ) : (
             <div className="relative">
-              {shouldUseCarousel && hasMeasuredCarousel && (
+              {shouldUseCarousel && hasMeasuredCarousel && !useNativeScroll && (
                 <>
                   <button
                     type="button"
@@ -284,29 +305,36 @@ export default function FeaturedProducts() {
                   </button>
                 </>
               )}
-              <div className="overflow-hidden" ref={trackRef}>
+              <div className={trackClassName} ref={trackRef}>
                 {hasMeasuredCarousel ? (
                   <div
-                    className={`flex gap-6 ${
-                      isAnimating ? "transition-transform duration-300 ease-out" : ""
-                    }`}
+                    className={cn(
+                      "flex w-max max-lg:!transform-none",
+                      !useNativeScroll &&
+                        isAnimating &&
+                        "lg:transition-transform lg:duration-300 lg:ease-out"
+                    )}
                     style={{
-                      transform: `translateX(-${currentIndex * (cardWidth + gapPx)}px)`,
+                      gap: CAROUSEL_GAP_PX,
+                      transform: useNativeScroll
+                        ? undefined
+                        : `translateX(-${currentIndex * (cardWidth + CAROUSEL_GAP_PX)}px)`,
                     }}
                   >
-                    {(shouldUseCarousel ? extendedProducts : topRatedProducts).map(
-                      (product, index) => (
-                        <div
-                          key={`${product.id}-${index}`}
-                          className="flex-none"
-                          style={{
-                            width: cardWidth ? `${cardWidth}px` : undefined,
-                          }}
-                        >
-                          <ProductCard product={product} />
-                        </div>
-                      )
-                    )}
+                    {(useNativeScroll || !shouldUseCarousel
+                      ? topRatedProducts
+                      : extendedProducts
+                    ).map((product, index) => (
+                      <div
+                        key={`${product.id}-${index}`}
+                        className="flex-none snap-start lg:snap-none"
+                        style={{
+                          width: cardWidth ? `${cardWidth}px` : undefined,
+                        }}
+                      >
+                        <ProductCard product={product} />
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div
@@ -354,7 +382,7 @@ export default function FeaturedProducts() {
             </div>
           ) : (
             <div className="relative">
-              {shouldUseNewArrivalsCarousel && hasMeasuredNewArrivals && (
+              {shouldUseNewArrivalsCarousel && hasMeasuredNewArrivals && !useNativeScroll && (
                 <>
                   <button
                     type="button"
@@ -380,33 +408,37 @@ export default function FeaturedProducts() {
                   </button>
                 </>
               )}
-              <div className="overflow-hidden" ref={newArrivalsTrackRef}>
+              <div className={trackClassName} ref={newArrivalsTrackRef}>
                 {hasMeasuredNewArrivals ? (
                   <div
-                    className={`flex gap-6 ${
-                      isNewArrivalsAnimating ? "transition-transform duration-300 ease-out" : ""
-                    }`}
+                    className={cn(
+                      "flex w-max max-lg:!transform-none",
+                      !useNativeScroll &&
+                        isNewArrivalsAnimating &&
+                        "lg:transition-transform lg:duration-300 lg:ease-out"
+                    )}
                     style={{
-                      transform: `translateX(-${
-                        newArrivalsIndex * (newArrivalsCardWidth + gapPx)
-                      }px)`,
+                      gap: CAROUSEL_GAP_PX,
+                      transform: useNativeScroll
+                        ? undefined
+                        : `translateX(-${
+                            newArrivalsIndex * (newArrivalsCardWidth + CAROUSEL_GAP_PX)
+                          }px)`,
                     }}
                   >
-                    {(shouldUseNewArrivalsCarousel ? newArrivals : initialVisibleNewArrivals).map(
-                      (product, index) => (
-                        <div
-                          key={`${product.id}-${index}`}
-                          className="flex-none"
-                          style={{
-                            width: newArrivalsCardWidth
-                              ? `${newArrivalsCardWidth}px`
-                              : undefined,
-                          }}
-                        >
-                          <ProductCard product={product} />
-                        </div>
-                      )
-                    )}
+                    {newArrivals.map((product) => (
+                      <div
+                        key={product.id}
+                        className="flex-none snap-start lg:snap-none"
+                        style={{
+                          width: newArrivalsCardWidth
+                            ? `${newArrivalsCardWidth}px`
+                            : undefined,
+                        }}
+                      >
+                        <ProductCard product={product} />
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div

@@ -1,8 +1,10 @@
 import {
   activateUser,
+  confirmPasswordReset,
   loginUser,
   registerUser,
   requestLoginOtp,
+  requestPasswordReset,
   sendOtp,
 } from "@/lib/api/users";
 
@@ -290,5 +292,59 @@ describe("loginUser", () => {
         otp: "123456",
       })
     ).rejects.toThrow("API request failed: 400");
+  });
+});
+
+describe("password reset", () => {
+  const fetchMock = jest.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    global.fetch = fetchMock;
+  });
+
+  it("requests a reset link for that email only", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          message: "If an account exists for that email, a reset link has been sent.",
+        }),
+    });
+
+    await requestPasswordReset({
+      email: "  user@example.com  ",
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://source.endovillehealth.com/api/users/password-reset/");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ email: "user@example.com" });
+  });
+
+  it("confirms a reset with the link uid and token, and no email", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          message: "Password updated. You can sign in with your new password.",
+        }),
+    });
+
+    await confirmPasswordReset({
+      uid: "MQ",
+      token: "reset-token",
+      password: "fresh-pass-4821",
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toEqual({
+      uid: "MQ",
+      token: "reset-token",
+      password: "fresh-pass-4821",
+    });
+    expect(body.email).toBeUndefined();
   });
 });

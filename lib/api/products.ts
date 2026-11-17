@@ -7,7 +7,7 @@ import { useLocation } from "@/lib/state/location-context";
 export type ProductReview = {
   id: number;
   product: number;
-  order: number;
+  order: string;
   user: number;
   user_display: string;
   rating: number;
@@ -22,7 +22,7 @@ export type ProductReview = {
 
 export type CreateProductReviewPayload = {
   product: number;
-  order: number;
+  order: string;
   rating: number;
   body?: string;
   is_anonymous?: boolean;

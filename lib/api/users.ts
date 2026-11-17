@@ -156,6 +156,36 @@ export const requestLoginOtp = (payload: RequestLoginOtpPayload) =>
     body: JSON.stringify(payload),
   });
 
+export type PasswordResetRequestPayload = {
+  email: string;
+};
+
+export type PasswordResetConfirmPayload = {
+  uid: string;
+  token: string;
+  password: string;
+};
+
+// Ask for a reset link for this account address only.
+// The server emails that account's own inbox. There is no separate recipient.
+export const requestPasswordReset = (payload: PasswordResetRequestPayload) =>
+  apiFetch<{ message: string }>("/api/users/password-reset/", {
+    method: "POST",
+    body: JSON.stringify({ email: payload.email.trim() }),
+  });
+
+// Set a new password for the account named by the link.
+// uid and token are bound together, so a link for one account cannot reset another.
+export const confirmPasswordReset = (payload: PasswordResetConfirmPayload) =>
+  apiFetch<{ message: string }>("/api/users/password-reset/confirm/", {
+    method: "POST",
+    body: JSON.stringify({
+      uid: payload.uid,
+      token: payload.token,
+      password: payload.password,
+    }),
+  });
+
 // Login user and establish a cookie-backed session.
 export const loginUser = (payload: LoginUserPayload) =>
   appFetch<AuthenticatedUser>("/api/auth/login/", {
@@ -226,6 +256,8 @@ export const userApi = {
   activateUser,
   sendOtp,
   requestLoginOtp,
+  requestPasswordReset,
+  confirmPasswordReset,
   loginUser,
   googleLogin,
   useUserApi,

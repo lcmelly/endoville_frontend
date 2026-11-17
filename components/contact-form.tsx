@@ -3,19 +3,15 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
-import { createMessage, LOCAL_CAPTCHA_TOKEN } from "@/lib/api/messages";
+import { createMessage } from "@/lib/api/messages";
 import { useAuth } from "@/lib/state/auth-context";
 import TurnstileWidget from "@/components/turnstile-widget";
 
 const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ORDER_PATTERN = /^[A-Za-z0-9_-]{8,32}$/;
 const MESSAGE_MAX_LENGTH = 500;
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
 
 const normalizePhone = (value: string) => value.replace(/[\s().-]/g, "");
-
-const isLocalHost = (host: string) =>
-  host === "localhost" || host === "127.0.0.1" || host === "::1";
 
 const fieldMessage = (value: unknown): string | null => {
   if (typeof value === "string") return value;
@@ -44,15 +40,11 @@ const errorMessage = (err: unknown) => {
   return "Could not send your message. Please try again.";
 };
 
-const removeCloudflareFrames = () => {
-  document
-    .querySelectorAll(
-      'script[src*="challenges.cloudflare.com"], iframe[src*="challenges.cloudflare.com"]'
-    )
-    .forEach((node) => node.remove());
+type ContactFormProps = {
+  siteKey: string;
 };
 
-export default function ContactForm() {
+export default function ContactForm({ siteKey }: ContactFormProps) {
   const searchParams = useSearchParams();
   const { auth } = useAuth();
   const [email, setEmail] = useState("");
@@ -60,8 +52,6 @@ export default function ContactForm() {
   const [phone, setPhone] = useState("");
   const [orderNumber, setOrderNumber] = useState(searchParams.get("order") ?? "");
   const [message, setMessage] = useState("");
-  const [localPage, setLocalPage] = useState(false);
-  const [hostReady, setHostReady] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaKey, setCaptchaKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -69,19 +59,12 @@ export default function ContactForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const local = isLocalHost(window.location.hostname);
-    setLocalPage(local);
-    setHostReady(true);
-    if (local) removeCloudflareFrames();
-  }, []);
-
-  useEffect(() => {
     if (emailTouched || email) return;
     const accountEmail = auth?.user?.email;
     if (accountEmail) setEmail(accountEmail);
   }, [auth, email, emailTouched]);
 
-  const captchaRequired = hostReady && !localPage && Boolean(SITE_KEY);
+  const captchaReady = Boolean(siteKey);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -113,7 +96,7 @@ export default function ContactForm() {
       setError(`Message must be ${MESSAGE_MAX_LENGTH} characters or fewer.`);
       return;
     }
-    if (captchaRequired && !captchaToken) {
+    if (!captchaToken) {
       setError("Complete the security check before sending.");
       return;
     }
@@ -125,7 +108,7 @@ export default function ContactForm() {
         ...(trimmedPhone ? { phone: trimmedPhone } : {}),
         ...(trimmedOrder ? { order_number: trimmedOrder } : {}),
         message: trimmedMessage,
-        captcha_token: captchaRequired ? captchaToken : LOCAL_CAPTCHA_TOKEN,
+        captcha_token: captchaToken,
       });
       setStatus("Message sent. We'll reply using the contact details you provided.");
       setMessage("");
@@ -140,8 +123,7 @@ export default function ContactForm() {
     }
   };
 
-  const canSubmit =
-    hostReady && !loading && (localPage || (Boolean(SITE_KEY) && Boolean(captchaToken)));
+  const canSubmit = !loading && captchaReady && Boolean(captchaToken);
 
   return (
     <div className="mx-auto w-full max-w-xl px-4 py-10">
@@ -216,22 +198,12 @@ export default function ContactForm() {
             </p>
           </div>
 
-          {localPage ? (
-            <p className="text-sm text-gray-500">
-              Localhost does not use the Cloudflare check. You can send the message directly.
-            </p>
-          ) : captchaRequired ? (
-            <TurnstileWidget key={captchaKey} siteKey={SITE_KEY} onToken={setCaptchaToken} />
+          {captchaReady ? (
+            <TurnstileWidget key={captchaKey} siteKey={siteKey} onToken={setCaptchaToken} />
           ) : (
-            hostReady && (
-              <p className="text-sm text-gray-500">
-                The security check is not available right now. Email{" "}
-                <a href="mailto:support@endovillehealth.com" className="font-semibold text-[#4C1C59]">
-                  support@endovillehealth.com
-                </a>{" "}
-                instead.
-              </p>
-            )
+            <p className="text-sm text-gray-500">
+              Add CUSTOMER_MESSAGE_CAPTCHA_SITE_KEY before sending a message.
+            </p>
           )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}

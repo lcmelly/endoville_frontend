@@ -85,7 +85,7 @@ export type OrderPaymentRecord = {
 
 /** Fields returned by GET /api/orders/orders/ (list) */
 export type Order = {
-  id: number;
+  id: string;
   status: string;
   subtotal: string;
   shipping_fee: string;
@@ -111,7 +111,7 @@ export const listOrders = () =>
     method: "GET",
   });
 
-export const getOrder = (id: number) =>
+export const getOrder = (id: string) =>
   appFetch<OrderDetail>(`/api/proxy/orders/orders/${id}/`, {
     method: "GET",
   });
@@ -137,7 +137,7 @@ export const useOrdersApi = () => {
     return listOrders();
   }, [isAuthenticated]);
   const getOrderById = useCallback(
-    async (id: number) => {
+    async (id: string) => {
       requireAuth();
       return getOrder(id);
     },

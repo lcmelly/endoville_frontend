@@ -28,11 +28,6 @@ type TurnstileWidgetProps = {
 
 const SCRIPT_SELECTOR = 'script[data-turnstile="true"]';
 
-const isLocalHost = () => {
-  const host = window.location.hostname;
-  return host === "localhost" || host === "127.0.0.1" || host === "::1";
-};
-
 export default function TurnstileWidget({ siteKey, onToken }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onTokenRef = useRef(onToken);
@@ -40,8 +35,7 @@ export default function TurnstileWidget({ siteKey, onToken }: TurnstileWidgetPro
 
   useEffect(() => {
     const container = containerRef.current;
-    // Local pages must not request challenges.cloudflare.com.
-    if (!siteKey || !container || isLocalHost()) return;
+    if (!siteKey || !container) return;
 
     let cancelled = false;
     let widgetId: string | null = null;

@@ -1,8 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
 
-/** Sent when this storefront has no Turnstile site key, which is local development. */
-export const LOCAL_CAPTCHA_TOKEN = "local-dev";
-
 export type CreateMessagePayload = {
   email?: string;
   phone?: string;

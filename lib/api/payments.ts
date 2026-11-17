@@ -5,7 +5,7 @@ import { appFetch } from "@/lib/api/client";
 import { useAuth } from "@/lib/state/auth-context";
 
 export type CreatePaymentPayload = {
-  order: number;
+  order: string;
   provider: "intasend" | "stripe" | "cash" | "other";
   method: "link" | "stk" | "checkout" | "manual";
   phone_number?: string;
@@ -16,7 +16,7 @@ export type CreatePaymentPayload = {
 
 export type Payment = {
   id: number;
-  order: number;
+  order: string;
   provider: string;
   status: string;
   amount: string;

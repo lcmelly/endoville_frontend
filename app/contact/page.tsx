@@ -8,9 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
+  const siteKey = process.env.CUSTOMER_MESSAGE_CAPTCHA_SITE_KEY?.trim() ?? "";
+
   return (
     <Suspense fallback={null}>
-      <ContactForm />
+      <ContactForm siteKey={siteKey} />
     </Suspense>
   );
 }
